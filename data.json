@@ -5,11 +5,11 @@
     "version": "0.1.0-prototype"
   },
   "attributes": {
-    "der":  { "label": "der（衝動）", "color": "#c0392b", "icon": "🔥" },
-    "die":  { "label": "die（流れ）", "color": "#2980b9", "icon": "💧" },
-    "das":  { "label": "das（静止）", "color": "#7f8c8d", "icon": "🪨" },
-    "plural":    { "label": "Plural（群れ）", "color": "#8e44ad", "icon": "👥" },
-    "unbenannt": { "label": "無冠詞（名）", "color": "#f1c40f", "icon": "✨" }
+    "der":  { "label": "der（衝動）", "color": "#c0392b" },
+    "die":  { "label": "die（流れ）", "color": "#2980b9" },
+    "das":  { "label": "das（静止）", "color": "#7f8c8d" },
+    "plural":    { "label": "Plural（群れ）", "color": "#8e44ad" },
+    "unbenannt": { "label": "無冠詞（名）", "color": "#f1c40f" }
   },
   "typeChart": {
     "_comment": "視点(viewer) -> 対象(subject) : 解像度の倍率。見えやすさの相性で、ダメージではない",

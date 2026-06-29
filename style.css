@@ -62,7 +62,12 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
   text-align: center;
   background: rgba(255,255,255,0.4);
 }
-.fb-icon { font-size: 20px; margin-right: 6px; }
+.fb-attrtag {
+  display: inline-block; font-size: 10px; letter-spacing: 0.05em;
+  color: white; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px;
+}
+.fb-attrtag[style*="f1c40f"] { color: #4a3a00; }
+.fb-viewpoint-btn { font-weight: 500; }
 .fb-fogbar { background: rgba(0,0,0,0.08); height: 10px; border-radius: 5px; margin-top: 10px; overflow: hidden; }
 .fb-fogfill { background: linear-gradient(90deg, #cfd6dd, var(--fog)); height: 100%; transition: width 0.4s; }
 .fb-foglabel { font-size: 11px; color: var(--dim); margin-top: 4px; }
@@ -98,3 +103,10 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-result { text-align: center; padding-top: 30vh; }
 .fb-kept { color: var(--accent); margin-top: 8px; }
 .fb-meaning { color: var(--dim); font-size: 13px; }
+
+.fb-quiz { text-align: center; padding-top: 26vh; }
+.fb-quiz-prompt { font-size: 16px; margin-bottom: 20px; }
+.fb-quiz-options { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.fb-quiz-options button { width: 70%; }
+
+.fb-quizresult { text-align: center; padding-top: 30vh; }

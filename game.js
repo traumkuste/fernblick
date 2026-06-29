@@ -207,17 +207,46 @@ function confirmFaintedReturn() {
 }
 
 // ------------------------------------------------------------
-// 観測完了(不透明度0): 知識として定着
+// 観測完了(不透明度0)
+// 既に観測員になっている対象ならそのまま結果へ。
+// 初めて出会う対象なら、意味の4択クイズを経てから定着するかどうかが決まる。
 // ------------------------------------------------------------
 function finishObservation() {
   const o = G.obs;
   const w = o.subject;
-  if (!G.knownWords.find(k => k.word === w.word)) {
-    G.knownWords.push({ ...w });
-    persistSave();
+
+  if (G.knownWords.find(k => k.word === w.word)) {
+    G.lastFinished = w;
+    G.screen = 'result_finish';
+    return;
   }
-  G.lastFinished = w;
-  G.screen = 'result_finish';
+
+  offerMeaningQuiz(w);
+}
+
+function offerMeaningQuiz(subject) {
+  const others = G.data.subjects.filter(s => s.word !== subject.word);
+  const shuffledOthers = [...others].sort(() => Math.random() - 0.5).slice(0, 3);
+  const optionSubjects = [subject, ...shuffledOthers].sort(() => Math.random() - 0.5);
+  G.quiz = { subject, optionSubjects };
+  G.screen = 'quiz';
+}
+
+function answerMeaningQuiz(idx) {
+  const chosen = G.quiz.optionSubjects[idx];
+  const subject = G.quiz.subject;
+  const correct = chosen.word === subject.word;
+
+  if (correct) {
+    if (!G.knownWords.find(k => k.word === subject.word)) {
+      G.knownWords.push({ ...subject });
+      persistSave();
+    }
+  }
+  G.lastQuizResult = correct;
+  G.lastQuizSubject = subject;
+  G.screen = 'quizResult';
+  render();
 }
 
 function backToTitleAfterResult() {
@@ -277,8 +306,31 @@ function render() {
   if (G.screen === 'result_finish') {
     app.innerHTML = `
       <div class="fb-result">
-        <p>${G.lastFinished.word}（${G.lastFinished.meaning}）を、十分に見届けた。</p>
-        <p class="fb-meaning">記憶に定着した。</p>
+        <p>${G.lastFinished.word}（${G.lastFinished.meaning}）を、また見届けた。</p>
+        <button onclick="continueAfterFinish()">拠点へ戻る</button>
+      </div>`;
+    return;
+  }
+
+  if (G.screen === 'quiz') {
+    app.innerHTML = `
+      <div class="fb-quiz">
+        <p class="fb-quiz-prompt">${G.quiz.subject.word} は、何を意味しているのだろう？</p>
+        <div class="fb-quiz-options">
+          ${G.quiz.optionSubjects.map((s, i) => `<button onclick="answerMeaningQuiz(${i})">${s.meaning}</button>`).join('')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  if (G.screen === 'quizResult') {
+    const s = G.lastQuizSubject;
+    app.innerHTML = `
+      <div class="fb-quizresult">
+        <p>${G.lastQuizResult
+          ? `${s.word}は、あなたと行動することを選んだようだ。`
+          : 'まだ、お互いに見えていない部分が多いらしい。'}</p>
+        ${G.lastQuizResult ? `<p class="fb-meaning">${s.word} — ${s.meaning}</p>` : ''}
         <button onclick="continueAfterFinish()">拠点へ戻る</button>
       </div>`;
     return;
@@ -298,7 +350,7 @@ function renderObserve(app) {
         <div class="fb-viewpoints">
           <p>${corruptText('どの視点で見るか', corrupted)}</p>
           ${Object.entries(attrs).map(([k, v]) => `
-            <button style="border-color:${v.color}" onclick="pickViewpointLight('${k}')">${v.icon} ${corruptText(v.label, corrupted)}</button>
+            <button class="fb-viewpoint-btn" style="border-color:${v.color}; background:${v.color}1a;" onclick="pickViewpointLight('${k}')">${corruptText(v.label, corrupted)}</button>
           `).join('')}
         </div>`;
     } else {
@@ -307,7 +359,7 @@ function renderObserve(app) {
           <p>${corruptText('視点と手法を選ぶ', corrupted)}</p>
           <div class="fb-viewpoints">
             ${Object.entries(attrs).map(([k, v]) => `
-              <button class="${o.tempViewpoint === k ? 'fb-selected' : ''}" style="border-color:${v.color}" onclick="G.obs.tempViewpoint='${k}'; render();">${v.icon} ${v.label}</button>
+              <button class="fb-viewpoint-btn ${o.tempViewpoint === k ? 'fb-selected' : ''}" style="border-color:${v.color}; background:${v.color}1a;" onclick="G.obs.tempViewpoint='${k}'; render();">${v.label}</button>
             `).join('')}
           </div>
           <div class="fb-methods">
@@ -322,7 +374,7 @@ function renderObserve(app) {
   app.innerHTML = `
     <div class="fb-observe ${corrupted ? 'fb-corrupted' : ''}">
       <div class="fb-subject" style="border-color:${attrs[o.subject.attr].color}">
-        <span class="fb-icon">${attrs[o.subject.attr].icon}</span>
+        <span class="fb-attrtag" style="background:${attrs[o.subject.attr].color}">${attrs[o.subject.attr].label}</span>
         <strong>${o.subject.word}</strong>
         <div class="fb-fogbar"><div class="fb-fogfill" style="width:${o.fog}%"></div></div>
         <p class="fb-foglabel">不透明度 ${o.fog}%</p>
