@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "title": "Fernblick",
+    "subtitle": "遠い眺め",
+    "version": "0.1.0-prototype"
+  },
+  "attributes": {
+    "der":  { "label": "der（衝動）", "color": "#c0392b", "icon": "🔥" },
+    "die":  { "label": "die（流れ）", "color": "#2980b9", "icon": "💧" },
+    "das":  { "label": "das（静止）", "color": "#7f8c8d", "icon": "🪨" },
+    "plural":    { "label": "Plural（群れ）", "color": "#8e44ad", "icon": "👥" },
+    "unbenannt": { "label": "無冠詞（名）", "color": "#f1c40f", "icon": "✨" }
+  },
+  "typeChart": {
+    "_comment": "視点(viewer) -> 対象(subject) : 解像度の倍率。見えやすさの相性で、ダメージではない",
+    "der":  { "die": 1.5, "das": 0.7 },
+    "die":  { "das": 1.5, "der": 0.7 },
+    "das":  { "der": 1.5, "die": 0.7 },
+    "plural":    { "der": 1.5, "die": 1.5, "das": 1.5, "unbenannt": 0.7 },
+    "unbenannt": { "plural": 1.5 }
+  },
+  "methods": {
+    "_comment": "重要な観測(ボス相当)でのみ視点と組み合わせて選ぶ。riskが高いほど不透明度は大きく下がるが、シーソーも大きく残響側に動く",
+    "list": [
+      { "id": "blick",     "name": "Blick（一瞥）",       "fogPower": 1.8, "seesawShift": 9, "desc": "一瞬で多くを見る。見落としと負荷が大きい" },
+      { "id": "lauschen",  "name": "Lauschen（耳を澄ます）", "fogPower": 1.1, "seesawShift": 4, "desc": "広く、ゆっくり聞き取る。負荷は控えめ" },
+      { "id": "abwarten",  "name": "Abwarten（待つ）",     "fogPower": 0.6, "seesawShift": 1, "desc": "自分からは動かない。進みは遅いが安全" }
+    ]
+  },
+  "subjects": [
+    { "word": "Nebel",      "meaning": "霧",                       "artikel": "der", "attr": "der", "tier": 1 },
+    { "word": "Dämmerung",  "meaning": "夕暮れ・明け方の薄明かり",     "artikel": "die", "attr": "die", "tier": 1 },
+    { "word": "Glimmen",    "meaning": "かすかな光",                "artikel": "das", "attr": "das", "tier": 1 },
+    { "word": "Hauch",      "meaning": "かすかな気配・息",            "artikel": "der", "attr": "der", "tier": 2 },
+    { "word": "Witterung",  "meaning": "気配・天候",                "artikel": "die", "attr": "die", "tier": 2 },
+    { "word": "Raunen",     "meaning": "ささやき",                  "artikel": "das", "attr": "das", "tier": 2 },
+    { "word": "die Ahnungen", "meaning": "いくつもの予感",            "artikel": "die", "attr": "plural", "tier": 3, "rare": true },
+    { "word": "Wetterleuchten", "meaning": "熱雷。遠くの空が光るのに、雷鳴は聞こえない", "artikel": "das", "attr": "unbenannt", "tier": 4, "rare": true, "important": true, "fogResistance": 0.4 }
+  ],
+  "rareSpawnRates": {
+    "plural": 0.05,
+    "unbenannt": 0.0,
+    "_comment": "unbenannt(Wetterleuchten)は通常出現しない。重要な観測としてのみ明示的に呼び出す"
+  },
+  "seesaw": {
+    "_comment": "0=完全な明晰さ, 100=完全な残響。観測のたびにmethod.seesawShift分だけ右(残響側)へ動く",
+    "max": 100,
+    "afterEffectRecoveryPenalty": 0.5,
+    "uiCorruptionStart": 60
+  }
+}
