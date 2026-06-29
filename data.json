@@ -5,11 +5,11 @@
     "version": "0.1.0-prototype"
   },
   "attributes": {
-    "der":  { "label": "der（衝動）", "color": "#c0392b" },
-    "die":  { "label": "die（流れ）", "color": "#2980b9" },
-    "das":  { "label": "das（静止）", "color": "#7f8c8d" },
-    "plural":    { "label": "Plural（群れ）", "color": "#8e44ad" },
-    "unbenannt": { "label": "無冠詞（名）", "color": "#f1c40f" }
+    "der":  { "label": "der", "color": "#A0522D" },
+    "die":  { "label": "die", "color": "#E67E22" },
+    "das":  { "label": "das", "color": "#2E6F9E" },
+    "plural":    { "label": "Plural", "color": "#F1C40F" },
+    "unbenannt": { "label": "Unbenannt", "color": "#95A5A6" }
   },
   "typeChart": {
     "_comment": "視点(viewer) -> 対象(subject) : 解像度の倍率。見えやすさの相性で、ダメージではない",

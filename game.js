@@ -6,11 +6,25 @@
 const G = {
   data: null,
   screen: 'title',
-  knownWords: [],     // 永続的な知識(localStorage)
+  knownWords: [],     // 永続的な知識(localStorage)。観測員チームの候補にもなる
+  party: [],           // 今、傍にいる観測員チーム(プレイヤー自身を含む)
   seesaw: 0,           // 0=完全な明晰さ, 100=完全な残響
   afterEffect: false,  // 直前の気絶による軽い後遺症フラグ
   obs: null            // 現在進行中の観測の状態
 };
+
+// プレイヤー自身。まだ何も知らない状態でも、無冠詞の存在として観測ができる。
+// 弱点も無く、得意な相性も無い(typeChartにunbenanntの特例はplural以外定義していないため中立)。
+function PLAYER_SELF() {
+  return {
+    word: '私',
+    meaning: 'まだ名前を持たない、観測する者自身',
+    artikel: '',
+    attr: 'unbenannt',
+    tier: 0,
+    isPlayer: true
+  };
+}
 
 // ------------------------------------------------------------
 // 初期化
@@ -38,9 +52,19 @@ function persistSave() {
 }
 
 // ------------------------------------------------------------
+// 観測員チームの編成
+// 本来は季節・天候による「気まぐれ」で誰が傍にいるかが変わる予定だが、
+// その出現条件はまだ実装していないため、今は定着済み全員が傍にいる簡易状態とする。
+// ------------------------------------------------------------
+function assembleParty() {
+  G.party = [PLAYER_SELF(), ...G.knownWords];
+}
+
+// ------------------------------------------------------------
 // 観測対象を選んで遭遇する(プロトタイプ用の簡易入口)
 // ------------------------------------------------------------
 function encounterRandomSubject() {
+  assembleParty();
   const pool = G.data.subjects.filter(s => !s.important);
   const rates = G.data.rareSpawnRates;
   let subject;
@@ -54,6 +78,7 @@ function encounterRandomSubject() {
 }
 
 function encounterImportantSubject() {
+  assembleParty();
   const subject = G.data.subjects.find(s => s.important);
   startObservation(subject, true);
 }
@@ -70,17 +95,18 @@ function startObservation(subject, isImportant) {
     fragments: [],        // この観測で得た断片(全滅すると失われうる)
     over: false,
     fainted: false,
-    selectedViewpoint: null
+    observer: null,        // 今、観測している観測員(party内の一人)
+    tempObserverIndex: null  // 重要観測で「先に選んだ観測員」を保持する一時状態
   };
   G.screen = 'observe';
   render();
 }
 
 // ------------------------------------------------------------
-// 通常観測: 視点を選ぶだけ→自動進行
+// 通常観測: 誰に観測してもらうかを選ぶだけ→自動進行
 // ------------------------------------------------------------
-function pickViewpointLight(attr) {
-  G.obs.selectedViewpoint = attr;
+function selectObserverLight(observerIndex) {
+  G.obs.observer = G.party[observerIndex];
   runLightObservationAuto();
 }
 
@@ -90,7 +116,7 @@ function runLightObservationAuto() {
     if (o.over) { clearInterval(interval); render(); return; }
     o.turn++;
 
-    const mult = getMultiplier(o.selectedViewpoint, o.subject.attr);
+    const mult = getMultiplier(o.observer.attr, o.subject.attr);
     const resistance = o.subject.fogResistance != null ? o.subject.fogResistance : 1;
     const fogDrop = Math.round(14 * mult * resistance);
     o.fog = Math.max(0, o.fog - fogDrop);
@@ -118,16 +144,17 @@ function runLightObservationAuto() {
 // ------------------------------------------------------------
 // 重要観測: 視点+手法を毎ターン選ぶ
 // ------------------------------------------------------------
-function commandObserve(attr, methodId) {
+function commandObserve(observerIndex, methodId) {
   const o = G.obs;
   if (o.over) return;
+  const observer = G.party[observerIndex];
   const method = G.data.methods.list.find(m => m.id === methodId);
 
-  const mult = getMultiplier(attr, o.subject.attr);
+  const mult = getMultiplier(observer.attr, o.subject.attr);
   const resistance = o.subject.fogResistance != null ? o.subject.fogResistance : 1;
   const fogDrop = Math.round(10 * method.fogPower * mult * resistance);
   o.fog = Math.max(0, o.fog - fogDrop);
-  o.selectedViewpoint = attr;
+  o.observer = observer;
   addFragmentLog(mult, method);
 
   shiftSeesaw(method.seesawShift);
@@ -144,6 +171,17 @@ function commandObserve(attr, methodId) {
   render();
 }
 
+// 塗りつぶし背景の上に置く文字色を、背景色の輝度から自動で決める。
+// 個別の色をハードコードで判定すると、後で配色を変えるたびに崩れるため。
+function readableTextColor(hexColor) {
+  const c = hexColor.replace('#', '');
+  const r = parseInt(c.substr(0, 2), 16);
+  const g = parseInt(c.substr(2, 2), 16);
+  const b = parseInt(c.substr(4, 2), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#2a2a2a' : '#ffffff';
+}
+
 // ------------------------------------------------------------
 // 解像度(相性)計算
 // ------------------------------------------------------------
@@ -158,8 +196,9 @@ function getMultiplier(viewerAttr, subjectAttr) {
 function addFragmentLog(mult, method) {
   const o = G.obs;
   const clarity = mult > 1 ? 'よく見える' : mult < 1 ? 'ぼんやりとしか見えない' : 'いつも通りに見える';
-  const label = method ? `${method.name}で` : '';
-  o.fragments.push(`${label}${clarity}。不透明度 ${o.fog}%`);
+  const observerName = o.observer.isPlayer ? '私' : o.observer.word;
+  const methodLabel = method ? `${method.name}で` : '';
+  o.fragments.push(`${observerName}が${methodLabel}観測——${clarity}。不透明度 ${o.fog}%`);
 }
 
 // ------------------------------------------------------------
@@ -347,24 +386,30 @@ function renderObserve(app) {
   if (!o.over) {
     if (!o.isImportant) {
       controls = `
-        <div class="fb-viewpoints">
-          <p>${corruptText('どの視点で見るか', corrupted)}</p>
-          ${Object.entries(attrs).map(([k, v]) => `
-            <button class="fb-viewpoint-btn" style="border-color:${v.color}; background:${v.color}1a;" onclick="pickViewpointLight('${k}')">${corruptText(v.label, corrupted)}</button>
+        <div class="fb-observers">
+          <p>${corruptText('どの観測員に見てもらうか', corrupted)}</p>
+          ${G.party.map((p, i) => `
+            <button class="fb-observer-btn" style="border-color:${attrs[p.attr].color}; background:${attrs[p.attr].color}1a;" onclick="selectObserverLight(${i})">
+              ${p.isPlayer ? '私' : p.word}
+              <span class="fb-observer-attr" style="color:${attrs[p.attr].color}">${attrs[p.attr].label}</span>
+            </button>
           `).join('')}
         </div>`;
     } else {
       controls = `
         <div class="fb-important">
-          <p>${corruptText('視点と手法を選ぶ', corrupted)}</p>
-          <div class="fb-viewpoints">
-            ${Object.entries(attrs).map(([k, v]) => `
-              <button class="fb-viewpoint-btn ${o.tempViewpoint === k ? 'fb-selected' : ''}" style="border-color:${v.color}; background:${v.color}1a;" onclick="G.obs.tempViewpoint='${k}'; render();">${v.label}</button>
+          <p>${corruptText('観測員と手法を選ぶ', corrupted)}</p>
+          <div class="fb-observers">
+            ${G.party.map((p, i) => `
+              <button class="fb-observer-btn ${o.tempObserverIndex === i ? 'fb-selected' : ''}" style="border-color:${attrs[p.attr].color}; background:${attrs[p.attr].color}1a;" onclick="G.obs.tempObserverIndex=${i}; render();">
+                ${p.isPlayer ? '私' : p.word}
+                <span class="fb-observer-attr" style="color:${attrs[p.attr].color}">${attrs[p.attr].label}</span>
+              </button>
             `).join('')}
           </div>
           <div class="fb-methods">
             ${G.data.methods.list.map(m => `
-              <button onclick="if(G.obs.tempViewpoint){commandObserve(G.obs.tempViewpoint,'${m.id}');}else{alert('先に視点を選んでください');}">${corruptText(m.name, corrupted)}<br><small>${m.desc}</small></button>
+              <button onclick="if(G.obs.tempObserverIndex!=null){commandObserve(G.obs.tempObserverIndex,'${m.id}');}else{alert('先に観測員を選んでください');}">${corruptText(m.name, corrupted)}<br><small>${m.desc}</small></button>
             `).join('')}
           </div>
         </div>`;
@@ -374,7 +419,7 @@ function renderObserve(app) {
   app.innerHTML = `
     <div class="fb-observe ${corrupted ? 'fb-corrupted' : ''}">
       <div class="fb-subject" style="border-color:${attrs[o.subject.attr].color}">
-        <span class="fb-attrtag" style="background:${attrs[o.subject.attr].color}">${attrs[o.subject.attr].label}</span>
+        <span class="fb-attrtag" style="background:${attrs[o.subject.attr].color}; color:${readableTextColor(attrs[o.subject.attr].color)};">${attrs[o.subject.attr].label}</span>
         <strong>${o.subject.word}</strong>
         <div class="fb-fogbar"><div class="fb-fogfill" style="width:${o.fog}%"></div></div>
         <p class="fb-foglabel">不透明度 ${o.fog}%</p>
@@ -396,13 +441,8 @@ function renderObserve(app) {
 
 // シーソーが侵食域に入ると、ボタン等のテキストにドイツ語を薄く混ぜる(簡易演出)
 const CORRUPT_MAP = {
-  'どの視点で見るか': 'welche Sicht',
-  'der（衝動）': 'der',
-  'die（流れ）': 'die',
-  'das（静止）': 'das',
-  'Plural（群れ）': 'Plural',
-  '無冠詞（名）': '——',
-  '視点と手法を選ぶ': 'Sicht und Methode',
+  'どの観測員に見てもらうか': 'wer sieht',
+  '観測員と手法を選ぶ': 'wer und wie',
   'Blick（一瞥）': 'der Blick',
   'Lauschen（耳を澄ます）': 'das Lauschen',
   'Abwarten（待つ）': 'das Abwarten'
