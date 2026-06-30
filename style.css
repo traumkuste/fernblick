@@ -95,6 +95,10 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-talk-name { font-size: 17px; letter-spacing: 0.04em; margin-bottom: 14px; }
 .fb-talk-line { font-style: italic; line-height: 1.8; margin-bottom: 20px; max-width: 300px; margin-left: auto; margin-right: auto; }
 
+.fb-playerroom { text-align: center; padding-top: 10vh; }
+.fb-playerroom .fb-seesaw { max-width: 280px; margin: 20px auto 10px; }
+.fb-playerroom-detail { font-size: 12px; color: var(--dim); margin: 8px 0; }
+
 .fb-observatory-svg { width: 100%; max-width: 320px; border-radius: 8px; margin: 8px 0 4px; display: block; }
 .fb-openbook-btn { display: block; margin: 14px auto 6px; }
 
@@ -164,4 +168,3 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-fragment-pool { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 16px; }
 .fb-fragment-btn { min-width: 50px; }
 .fb-fragment-preview { font-size: 22px; letter-spacing: 0.05em; margin: 16px 0; min-height: 30px; color: var(--accent); }
-.fb-playername { color: var(--accent); font-size: 15px; margin-bottom: 16px; }

@@ -230,6 +230,12 @@ function openWortzimmer() {
   render();
 }
 
+// プレイヤー自身の部屋: 自分の今の状態(明晰さ⇄残響、後遺症の有無)を見る場所
+function openPlayerRoom() {
+  G.screen = 'playerRoom';
+  render();
+}
+
 // 観測員に話しかける。まだ伝えていない用件(庭の依頼など)があれば、ここで渡す。
 function talkToWord(word) {
   const entry = G.knownWords.find(k => k.word === word);
@@ -415,8 +421,7 @@ function addFragmentLog(mult, method) {
 // シーソー(明晰さ ⇄ 残響)
 // ------------------------------------------------------------
 function shiftSeesaw(amount) {
-  const penalty = G.afterEffect ? G.data.seesaw.afterEffectRecoveryPenalty : 1;
-  G.seesaw = Math.min(G.data.seesaw.max, G.seesaw + amount * penalty);
+  G.seesaw = Math.min(G.data.seesaw.max, G.seesaw + amount);
 }
 
 function recoverSeesaw(amount) {
@@ -527,6 +532,12 @@ function answerMeaningQuiz(idx) {
 // 拠点(タイトル画面)に戻る。その直前に、まだ伝えていない用件を持つ観測員がいれば、
 // ここで自動的に話しかけてくる(Wortzimmerを自分から訪れる、という発見任せにしない)。
 function returnToTitleOrAutoTalk() {
+  // 後遺症が残っている間は、回復量も少なくなる。判定はafterEffectをリセットする前に行う。
+  const penalty = G.afterEffect ? G.data.seesaw.afterEffectRecoveryPenalty : 1;
+  recoverSeesaw(40 * penalty);
+  G.afterEffect = false; // 1回拠点に戻れば、後遺症はここで解消する(簡易処理)
+  persistSave();
+
   const messenger = G.knownWords.find(k => k.unlocksGarden && !G.gardenUnlocked);
   if (messenger) {
     G.gardenUnlocked = true;
@@ -542,7 +553,6 @@ function returnToTitleOrAutoTalk() {
 
 function backToTitleAfterResult() {
   advanceClock();
-  G.afterEffect = false; // 1回休んだことで後遺症は解消(簡易処理)
   G.obs = null;
   returnToTitleOrAutoTalk();
   render();
@@ -700,7 +710,6 @@ function render() {
       <div class="fb-title">
         <h1>${G.data.meta.title}</h1>
         <p class="fb-sub">${G.data.meta.subtitle}</p>
-        ${G.playerName ? `<p class="fb-playername">${G.playerName}</p>` : ''}
 
         ${renderObservatorySvg(phase)}
         <p class="fb-phase-label">今は${phase}</p>
@@ -716,6 +725,7 @@ function render() {
         <div class="fb-actions">
           <button class="fb-openbook-btn" onclick="openBook()">扉の前に落ちている本を開く</button>
           <button class="fb-openbook-btn" onclick="openWortzimmer()">言葉の部屋へ</button>
+          <button class="fb-openbook-btn" onclick="openPlayerRoom()">${G.playerName || '私'}の部屋へ</button>
         </div>
 
         <p class="fb-known">記憶している言葉: ${G.knownWords.length}語　／　部品: ${G.parts}</p>
@@ -772,6 +782,34 @@ function render() {
         <p class="fb-talk-name">${w.word}</p>
         <p class="fb-talk-line">${G.lastTalkLine || '今は、特に話すことは無いようだ。'}</p>
         <button onclick="${returnAction}">${returnLabel}</button>
+      </div>`;
+    return;
+  }
+
+  if (G.screen === 'playerRoom') {
+    const seesawPct = G.seesaw;
+    app.innerHTML = `
+      <div class="fb-playerroom">
+        <h2 class="fb-wortzimmer-title">${G.playerName || '私'}</h2>
+        <p class="fb-wortzimmer-sub">まだ多くを知らない、観測する者自身</p>
+
+        <div class="fb-seesaw">
+          <span class="fb-seesaw-label-left">明晰さ</span>
+          <div class="fb-seesawbar">
+            <div class="fb-seesawfill" style="width:${seesawPct}%"></div>
+          </div>
+          <span class="fb-seesaw-label-right">残響</span>
+        </div>
+        <p class="fb-playerroom-detail">${
+          seesawPct < 30 ? '今は落ち着いている。'
+          : seesawPct < 70 ? '少し、何かが滲んでいる気がする。'
+          : '気をつけた方がいい。何かが、すぐ近くにいる。'
+        }</p>
+        ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
+
+        <p class="fb-playerroom-detail">記憶している言葉: ${G.knownWords.length}語</p>
+
+        <button class="fb-reset" onclick="G.screen='title'; render();">拠点へ戻る</button>
       </div>`;
     return;
   }
