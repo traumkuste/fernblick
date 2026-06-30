@@ -1,5 +1,5 @@
 // ============================================================
-// Fernblick — prototype core
+// Wetterleuchten — prototype core
 // 戦闘ではなく「観測」。倒すのではなく、不透明度を下げて記録する。
 // ============================================================
 
@@ -47,7 +47,7 @@ async function init() {
 
 function loadSave() {
   try {
-    const saved = JSON.parse(localStorage.getItem('fernblick_save') || '{}');
+    const saved = JSON.parse(localStorage.getItem('wetterleuchten_save') || '{}');
     G.knownWords = saved.knownWords || [];
     G.playerName = saved.playerName || null;
     G.clockActionCount = saved.clockActionCount || 0;
@@ -65,7 +65,7 @@ function initialInstrumentState() {
 }
 
 function persistSave() {
-  localStorage.setItem('fernblick_save', JSON.stringify({
+  localStorage.setItem('wetterleuchten_save', JSON.stringify({
     knownWords: G.knownWords,
     playerName: G.playerName,
     clockActionCount: G.clockActionCount,
@@ -155,6 +155,15 @@ function confirmName() {
 // ------------------------------------------------------------
 function assembleParty() {
   G.party = [PLAYER_SELF(), ...G.knownWords];
+}
+
+// ------------------------------------------------------------
+// 本を開く: 拠点(現実)から、言葉の世界(本の中)へ入る入口
+// ------------------------------------------------------------
+function openBook() {
+  advanceClock();
+  G.screen = 'book';
+  render();
 }
 
 // ------------------------------------------------------------
@@ -414,51 +423,81 @@ function continueAfterFinish() {
 // 拠点(観測所)の描画
 // ------------------------------------------------------------
 
-// フェーズごとの空の色。リアルタイムには依存しない、ゲーム内独自の時計。
+// フェーズごとの空気の色。リアルタイムには依存しない、ゲーム内独自の時計。
 const PHASE_SKY = {
-  '夜明け': ['#d9c8d6', '#f2dfc9'],
-  '昼':     ['#cfe0ea', '#eef3ee'],
-  '夕暮れ': ['#e8b48a', '#cf8f8f'],
-  '夜':     ['#3a3550', '#5a4f6a']
+  '夜明け': { fog1: '#5a4d4a', fog2: '#8a7560', ground: '#3a3530', wood: '#4a4038' },
+  '昼':     { fog1: '#6b6a64', fog2: '#a8a290', ground: '#403d34', wood: '#544a3e' },
+  '夕暮れ': { fog1: '#6e5648', fog2: '#a37a52', ground: '#2e2824', wood: '#4a3a2c' },
+  '夜':     { fog1: '#2a2630', fog2: '#3d3a48', ground: '#1c1a20', wood: '#2a2420' }
 };
 
 function renderObservatorySvg(phase) {
-  const [skyTop, skyBottom] = PHASE_SKY[phase] || PHASE_SKY['昼'];
+  const tone = PHASE_SKY[phase] || PHASE_SKY['昼'];
   const repaired = id => G.instrumentState[id] === 'repaired';
+  const moss = '#5a6b4a'; // 苔の色。修理前の器具に絡みつかせる
 
-  // 観測小屋(半分崩れた建物)と、3つの観測器具を簡易な線画で表現する。
-  // 修理済みの器具は実線で、壊れたものは破線+傾きで表す。
   return `
-    <svg class="fb-observatory-svg" viewBox="0 0 300 160" preserveAspectRatio="xMidYMid meet">
+    <svg class="fb-observatory-svg" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${skyTop}" />
-          <stop offset="100%" stop-color="${skyBottom}" />
+        <linearGradient id="fogGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${tone.fog2}" />
+          <stop offset="55%" stop-color="${tone.fog1}" />
+          <stop offset="100%" stop-color="${tone.ground}" />
         </linearGradient>
+        <radialGradient id="lightPool" cx="75%" cy="20%" r="60%">
+          <stop offset="0%" stop-color="${tone.fog2}" stop-opacity="0.55" />
+          <stop offset="100%" stop-color="${tone.fog2}" stop-opacity="0" />
+        </radialGradient>
       </defs>
-      <rect x="0" y="0" width="300" height="160" fill="url(#skyGrad)" />
 
-      <!-- 地面 -->
-      <rect x="0" y="130" width="300" height="30" fill="#7a8b6f" opacity="0.5" />
+      <rect x="0" y="0" width="300" height="200" fill="url(#fogGrad)" />
+      <rect x="0" y="0" width="300" height="200" fill="url(#lightPool)" />
 
-      <!-- 半分崩れた観測小屋 -->
-      <polygon points="60,130 60,90 100,70 140,90 140,130" fill="none" stroke="#5a5560" stroke-width="2" />
-      <line x1="100" y1="70" x2="100" y2="50" stroke="#5a5560" stroke-width="2" stroke-dasharray="3,3" />
+      <!-- 地面、湿った敷石 -->
+      <rect x="0" y="150" width="300" height="50" fill="${tone.ground}" />
+      <ellipse cx="230" cy="175" rx="55" ry="8" fill="#000" opacity="0.12" />
+      <ellipse cx="120" cy="185" rx="40" ry="6" fill="#000" opacity="0.1" />
 
-      <!-- 風向計 -->
-      <g transform="translate(170,60)">
-        <line x1="0" y1="0" x2="0" y2="40" stroke="#5a5560" stroke-width="${repaired('weathervane') ? 2 : 1.4}" stroke-dasharray="${repaired('weathervane') ? 'none' : '2,3'}" />
-        <line x1="-12" y1="0" x2="12" y2="${repaired('weathervane') ? -4 : 6}" stroke="${repaired('weathervane') ? '#2980b9' : '#999'}" stroke-width="2" />
+      <!-- 奥に霧に沈む観測器具のシルエット -->
+      <g opacity="0.65">
+        <!-- 風向計 -->
+        <g transform="translate(225,55)">
+          <line x1="0" y1="0" x2="0" y2="60" stroke="${repaired('weathervane') ? '#cfae7a' : tone.wood}" stroke-width="${repaired('weathervane') ? 2 : 2.4}" />
+          <line x1="-16" y1="0" x2="16" y2="${repaired('weathervane') ? -6 : 8}" stroke="${repaired('weathervane') ? '#cfae7a' : moss}" stroke-width="3" stroke-linecap="round" />
+          <line x1="-10" y1="14" x2="10" y2="${repaired('weathervane') ? 6 : 20}" stroke="${repaired('weathervane') ? '#cfae7a' : moss}" stroke-width="2.4" stroke-linecap="round" />
+        </g>
+        <!-- 雨量計 -->
+        <g transform="translate(255,95)">
+          <rect x="-7" y="0" width="14" height="26" rx="2" fill="${repaired('raingauge') ? '#cfae7a' : tone.wood}" />
+          <rect x="-9" y="24" width="18" height="6" fill="${tone.ground}" opacity="0.5" />
+        </g>
+        <!-- 気圧計 -->
+        <g transform="translate(280,70)">
+          <circle r="11" fill="${repaired('barometer') ? '#cfae7a' : tone.wood}" />
+          <circle r="11" fill="none" stroke="${moss}" stroke-width="${repaired('barometer') ? 0 : 1.6}" stroke-dasharray="2,3" />
+        </g>
       </g>
 
-      <!-- 雨量計 -->
-      <g transform="translate(200,100)">
-        <rect x="-6" y="0" width="12" height="20" fill="none" stroke="${repaired('raingauge') ? '#2980b9' : '#999'}" stroke-width="1.6" stroke-dasharray="${repaired('raingauge') ? 'none' : '2,2'}" />
+      <!-- 手前: 朽ちた木の扉(画面の左寄りに大きく) -->
+      <g transform="translate(20,10)">
+        <rect x="0" y="0" width="100" height="160" fill="${tone.wood}" />
+        <rect x="6" y="6" width="88" height="148" fill="none" stroke="#000" stroke-opacity="0.25" stroke-width="2" />
+        <!-- 窓 -->
+        <rect x="20" y="20" width="60" height="50" fill="#14110f" opacity="0.7" />
+        <line x1="50" y1="20" x2="50" y2="70" stroke="#000" stroke-opacity="0.3" stroke-width="2" />
+        <line x1="20" y1="45" x2="80" y2="45" stroke="#000" stroke-opacity="0.3" stroke-width="2" />
+        <!-- 蔦(苔の侵食) -->
+        <path d="M85,0 C90,30 75,50 88,80 C95,100 80,120 90,160" stroke="${moss}" stroke-width="3" fill="none" opacity="0.8" />
+        <path d="M0,40 C10,60 4,90 12,130" stroke="${moss}" stroke-width="2" fill="none" opacity="0.6" />
+        <!-- 取っ手 -->
+        <circle cx="78" cy="95" r="2.4" fill="#8a7355" />
       </g>
 
-      <!-- 気圧計 -->
-      <g transform="translate(225,70)">
-        <circle r="10" fill="none" stroke="${repaired('barometer') ? '#c0392b' : '#999'}" stroke-width="1.6" stroke-dasharray="${repaired('barometer') ? 'none' : '2,2'}" />
+      <!-- 扉の前に置かれた本 -->
+      <g transform="translate(95,168) rotate(-3)">
+        <rect x="0" y="0" width="46" height="16" rx="1.5" fill="#8a7048" stroke="#5c4a2c" stroke-width="1.2" />
+        <line x1="4" y1="3" x2="42" y2="3" stroke="#5c4a2c" stroke-width="0.6" opacity="0.6" />
+        <line x1="4" y1="6" x2="36" y2="6" stroke="#5c4a2c" stroke-width="0.6" opacity="0.4" />
       </g>
     </svg>`;
 }
@@ -524,8 +563,8 @@ function render() {
     const phase = currentPhase();
     app.innerHTML = `
       <div class="fb-title">
-        <h1>Fernblick</h1>
-        <p class="fb-sub">遠い眺め</p>
+        <h1>${G.data.meta.title}</h1>
+        <p class="fb-sub">${G.data.meta.subtitle}</p>
         ${G.playerName ? `<p class="fb-playername">${G.playerName}</p>` : ''}
 
         ${renderObservatorySvg(phase)}
@@ -534,11 +573,22 @@ function render() {
         ${renderEnvironmentDetails(phase)}
         ${renderInstrumentPanel()}
 
-        <button onclick="encounterRandomSubject()">観測に出る</button>
-        <button onclick="encounterImportantSubject()">重要な観測へ（Wetterleuchten）</button>
+        <button class="fb-openbook-btn" onclick="openBook()">扉の前に落ちている本を開く</button>
         <p class="fb-known">記憶している言葉: ${G.knownWords.length}語　／　部品: ${G.parts}</p>
         ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
         <button class="fb-reset" onclick="resetSave()">記憶をすべて消す（検証用）</button>
+      </div>`;
+    return;
+  }
+
+  if (G.screen === 'book') {
+    app.innerHTML = `
+      <div class="fb-book">
+        <p class="fb-book-title">Meteorologische Beobachtungen</p>
+        <p class="fb-opening-text">表紙を開くと、文字よりも先に、何かの気配が立ちのぼってくる。</p>
+        <button onclick="encounterRandomSubject()">気配の方へ、目を向ける</button>
+        <button onclick="encounterImportantSubject()">遠くで、何かが光っている方へ</button>
+        <button class="fb-reset" onclick="G.screen='title'; render();">本を閉じる</button>
       </div>`;
     return;
   }
@@ -722,7 +772,7 @@ function renderOverflow(app) {
 // ------------------------------------------------------------
 function resetSave() {
   if (!confirm('記憶している言葉も、あなたの名前も、すべて消えます。よろしいですか？')) return;
-  localStorage.removeItem('fernblick_save');
+  localStorage.removeItem('wetterleuchten_save');
   G.knownWords = [];
   G.seesaw = 0;
   G.afterEffect = false;

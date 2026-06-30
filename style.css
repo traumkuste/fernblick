@@ -54,7 +54,6 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-aftereffect { color: var(--accent); font-size: 12px; margin-top: 6px; }
 .fb-reset { background: transparent; border: 1px solid #c9b8a8; color: #9a7d6a; font-size: 11px; margin-top: 10px; }
 
-.fb-observatory-svg { width: 100%; max-width: 320px; border-radius: 8px; margin: 8px 0 4px; }
 .fb-phase-label { font-size: 11px; color: var(--dim); margin-bottom: 14px; }
 
 .fb-environment { text-align: left; font-size: 12px; color: var(--ink); opacity: 0.85; line-height: 1.8; margin: 0 auto 16px; max-width: 320px; }
@@ -66,6 +65,12 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-instrument-row button { font-size: 11px; padding: 4px 10px; margin: 0; }
 
 .fb-gotpart { color: var(--accent); font-size: 12px; margin-top: 6px; }
+
+.fb-observatory-svg { width: 100%; max-width: 320px; border-radius: 8px; margin: 8px 0 4px; display: block; }
+.fb-openbook-btn { display: block; margin: 14px auto 6px; }
+
+.fb-book { text-align: center; padding-top: 22vh; }
+.fb-book-title { font-style: italic; font-size: 16px; letter-spacing: 0.03em; margin-bottom: 18px; color: var(--accent); }
 
 .fb-observe { display: flex; flex-direction: column; gap: 16px; }
 .fb-subject {
