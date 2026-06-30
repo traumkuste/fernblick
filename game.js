@@ -99,12 +99,22 @@ function loadSave() {
     G.parts = saved.parts != null ? saved.parts : 0;
     G.gardenUnlocked = saved.gardenUnlocked || false;
 
-    // 個体ステータス導入前のセーブデータには stats が無いので、ここで補う
+    // 古いセーブデータには、後から追加したフィールド(stats、unlocksGarden、gardenLineなど)が
+    // 欠けていることがある。data.json側のマスターデータと突き合わせて補う。
     let migrated = false;
     G.knownWords.forEach(w => {
+      const master = G.data.subjects.find(s => s.word === w.word);
       if (!w.stats) {
         w.stats = generateInitialStats();
         migrated = true;
+      }
+      if (master) {
+        ['unlocksGarden', 'gardenLine'].forEach(key => {
+          if (w[key] === undefined && master[key] !== undefined) {
+            w[key] = master[key];
+            migrated = true;
+          }
+        });
       }
     });
     if (migrated) persistSave();
