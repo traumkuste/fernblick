@@ -5,11 +5,11 @@
     "version": "0.1.0-prototype"
   },
   "attributes": {
-    "der":  { "label": "der", "color": "#A0522D" },
-    "die":  { "label": "die", "color": "#E67E22" },
-    "das":  { "label": "das", "color": "#2E6F9E" },
-    "plural":    { "label": "Plural", "color": "#F1C40F" },
-    "unbenannt": { "label": "Unbenannt", "color": "#95A5A6" }
+    "der":  { "label": "der", "color": "#c0392b" },
+    "die":  { "label": "die", "color": "#2980b9" },
+    "das":  { "label": "das", "color": "#7f8c8d" },
+    "plural":    { "label": "Plural", "color": "#8e44ad" },
+    "unbenannt": { "label": "Unbenannt", "color": "#f1c40f" }
   },
   "typeChart": {
     "_comment": "視点(viewer) -> 対象(subject) : 解像度の倍率。見えやすさの相性で、ダメージではない",
@@ -28,14 +28,14 @@
     ]
   },
   "subjects": [
-    { "word": "Nebel",      "meaning": "霧",                       "artikel": "der", "attr": "der", "tier": 1 },
-    { "word": "Dämmerung",  "meaning": "夕暮れ・明け方の薄明かり",     "artikel": "die", "attr": "die", "tier": 1 },
-    { "word": "Glimmen",    "meaning": "かすかな光",                "artikel": "das", "attr": "das", "tier": 1 },
-    { "word": "Hauch",      "meaning": "かすかな気配・息",            "artikel": "der", "attr": "der", "tier": 2 },
-    { "word": "Witterung",  "meaning": "気配・天候",                "artikel": "die", "attr": "die", "tier": 2 },
-    { "word": "Raunen",     "meaning": "ささやき",                  "artikel": "das", "attr": "das", "tier": 2 },
-    { "word": "die Ahnungen", "meaning": "いくつもの予感",            "artikel": "die", "attr": "plural", "tier": 3, "rare": true },
-    { "word": "Wetterleuchten", "meaning": "熱雷。遠くの空が光るのに、雷鳴は聞こえない", "artikel": "das", "attr": "unbenannt", "tier": 4, "rare": true, "important": true, "fogResistance": 0.4 }
+    { "word": "Nebel",      "meaning": "霧",                       "artikel": "der", "attr": "der", "tier": 1, "nameFragments": ["Ne", "bel"] },
+    { "word": "Dämmerung",  "meaning": "夕暮れ・明け方の薄明かり",     "artikel": "die", "attr": "die", "tier": 1, "nameFragments": ["Däm", "me", "rung"] },
+    { "word": "Glimmen",    "meaning": "かすかな光",                "artikel": "das", "attr": "das", "tier": 1, "nameFragments": ["Gli", "men"] },
+    { "word": "Hauch",      "meaning": "かすかな気配・息",            "artikel": "der", "attr": "der", "tier": 2, "nameFragments": ["Hauch"] },
+    { "word": "Witterung",  "meaning": "気配・天候",                "artikel": "die", "attr": "die", "tier": 2, "nameFragments": ["Wit", "te", "rung"] },
+    { "word": "Raunen",     "meaning": "ささやき",                  "artikel": "das", "attr": "das", "tier": 2, "nameFragments": ["Rau", "nen"] },
+    { "word": "die Ahnungen", "meaning": "いくつもの予感",            "artikel": "die", "attr": "plural", "tier": 3, "rare": true, "nameFragments": ["Ah", "nun", "gen"] },
+    { "word": "Wetterleuchten", "meaning": "熱雷。遠くの空が光るのに、雷鳴は聞こえない", "artikel": "das", "attr": "unbenannt", "tier": 4, "rare": true, "important": true, "fogResistance": 0.4, "nameFragments": ["Wet", "ter", "leuch", "ten"] }
   ],
   "rareSpawnRates": {
     "plural": 0.05,

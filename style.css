@@ -110,3 +110,11 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-quiz-options button { width: 70%; }
 
 .fb-quizresult { text-align: center; padding-top: 30vh; }
+
+.fb-opening { text-align: center; padding-top: 18vh; }
+.fb-opening-text { font-size: 14px; line-height: 1.9; margin: 10px 0; }
+.fb-opening-hint { color: var(--dim); font-size: 12px; margin-bottom: 16px; }
+.fb-fragment-pool { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 16px; }
+.fb-fragment-btn { min-width: 50px; }
+.fb-fragment-preview { font-size: 22px; letter-spacing: 0.05em; margin: 16px 0; min-height: 30px; color: var(--accent); }
+.fb-playername { color: var(--accent); font-size: 15px; margin-bottom: 16px; }

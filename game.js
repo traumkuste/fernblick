@@ -10,15 +10,17 @@ const G = {
   party: [],           // 今、傍にいる観測員チーム(プレイヤー自身を含む)
   seesaw: 0,           // 0=完全な明晰さ, 100=完全な残響
   afterEffect: false,  // 直前の気絶による軽い後遺症フラグ
-  obs: null            // 現在進行中の観測の状態
+  obs: null,           // 現在進行中の観測の状態
+  playerName: null,    // オープニングで組み立てた名前。未設定ならオープニングへ
+  opening: null        // オープニング進行中の一時状態
 };
 
 // プレイヤー自身。まだ何も知らない状態でも、無冠詞の存在として観測ができる。
 // 弱点も無く、得意な相性も無い(typeChartにunbenanntの特例はplural以外定義していないため中立)。
 function PLAYER_SELF() {
   return {
-    word: '私',
-    meaning: 'まだ名前を持たない、観測する者自身',
+    word: G.playerName || '私',
+    meaning: 'まだ多くを知らない、観測する者自身',
     artikel: '',
     attr: 'unbenannt',
     tier: 0,
@@ -33,13 +35,18 @@ async function init() {
   const res = await fetch('data.json');
   G.data = await res.json();
   loadSave();
-  render();
+  if (!G.playerName) {
+    startOpening();
+  } else {
+    render();
+  }
 }
 
 function loadSave() {
   try {
     const saved = JSON.parse(localStorage.getItem('fernblick_save') || '{}');
     G.knownWords = saved.knownWords || [];
+    G.playerName = saved.playerName || null;
   } catch (e) {
     console.warn('save load failed', e);
   }
@@ -47,8 +54,68 @@ function loadSave() {
 
 function persistSave() {
   localStorage.setItem('fernblick_save', JSON.stringify({
-    knownWords: G.knownWords
+    knownWords: G.knownWords,
+    playerName: G.playerName
   }));
+}
+
+// ------------------------------------------------------------
+// オープニング: 目覚め → 自分自身を観測する → 名前の断片を組み立てる
+// ------------------------------------------------------------
+function startOpening() {
+  G.opening = { stage: 'wake' };
+  G.screen = 'opening';
+  render();
+}
+
+function openingObserveSelf() {
+  // 周辺の気配から3〜4語をランダムに選び、断片プールを作る。
+  // 重要な対象(Wetterleuchten)や稀少な対象は、最初の名前には混ぜない。
+  const basics = G.data.subjects.filter(s => !s.important && !s.rare);
+  const shuffled = [...basics].sort(() => Math.random() - 0.5);
+  const sourceWords = shuffled.slice(0, 3 + Math.round(Math.random())); // 3〜4語
+
+  // 同じ綴りの断片が複数語から出ても区別できるよう、一意なIDを振る
+  let uid = 0;
+  const pool = sourceWords
+    .flatMap(s => s.nameFragments.map(text => ({ id: `f${uid++}`, text })))
+    .sort(() => Math.random() - 0.5);
+
+  G.opening = {
+    stage: 'fragments',
+    pool,
+    sourceWords,    // 後で「実はこの単語の一部だった」と明かす時のために保持しておく
+    chosen: []        // 選んだ断片のidの配列
+  };
+  G.screen = 'opening';
+  render();
+}
+
+function toggleFragment(fragmentId) {
+  const o = G.opening;
+  const idx = o.chosen.indexOf(fragmentId);
+  if (idx >= 0) {
+    o.chosen.splice(idx, 1);
+  } else if (o.chosen.length < 4) {
+    o.chosen.push(fragmentId);
+  }
+  render();
+}
+
+function confirmName() {
+  const o = G.opening;
+  if (o.chosen.length < 2) {
+    alert('断片を2つ以上選んでください');
+    return;
+  }
+  const text = o.chosen
+    .map(id => o.pool.find(f => f.id === id).text)
+    .join('');
+  G.playerName = text;
+  persistSave();
+  G.opening = null;
+  G.screen = 'title';
+  render();
 }
 
 // ------------------------------------------------------------
@@ -308,11 +375,17 @@ function render() {
   const app = document.getElementById('app');
   if (!app) return;
 
+  if (G.screen === 'opening') {
+    renderOpening(app);
+    return;
+  }
+
   if (G.screen === 'title') {
     app.innerHTML = `
       <div class="fb-title">
         <h1>Fernblick</h1>
         <p class="fb-sub">遠い眺め</p>
+        ${G.playerName ? `<p class="fb-playername">${G.playerName}</p>` : ''}
         <button onclick="encounterRandomSubject()">観測に出る</button>
         <button onclick="encounterImportantSubject()">重要な観測へ（Wetterleuchten）</button>
         <p class="fb-known">記憶している言葉: ${G.knownWords.length}語</p>
@@ -371,6 +444,37 @@ function render() {
           : 'まだ、お互いに見えていない部分が多いらしい。'}</p>
         ${G.lastQuizResult ? `<p class="fb-meaning">${s.word} — ${s.meaning}</p>` : ''}
         <button onclick="continueAfterFinish()">拠点へ戻る</button>
+      </div>`;
+    return;
+  }
+}
+
+function renderOpening(app) {
+  const o = G.opening;
+
+  if (o.stage === 'wake') {
+    app.innerHTML = `
+      <div class="fb-opening">
+        <p class="fb-opening-text">観測所の近くで、目が覚める。</p>
+        <p class="fb-opening-text">記憶は、ほとんど無い。</p>
+        <p class="fb-opening-text">手の中に、壊れた方位磁針が一つ。針は定まらず、ただ静かに回り続けている。</p>
+        <button onclick="openingObserveSelf()">磁針を、自分自身に向けてみる</button>
+      </div>`;
+    return;
+  }
+
+  if (o.stage === 'fragments') {
+    app.innerHTML = `
+      <div class="fb-opening">
+        <p class="fb-opening-text">いくつかの音の断片が、ぼんやりと浮かび上がる。</p>
+        <p class="fb-opening-hint">2〜4個選んで、つなげてください。</p>
+        <div class="fb-fragment-pool">
+          ${o.pool.map(f => `
+            <button class="fb-fragment-btn ${o.chosen.includes(f.id) ? 'fb-selected' : ''}" onclick="toggleFragment('${f.id}')">${f.text}</button>
+          `).join('')}
+        </div>
+        <p class="fb-fragment-preview">${o.chosen.map(id => o.pool.find(f => f.id === id).text).join('') || '……'}</p>
+        <button onclick="confirmName()">この名前にする</button>
       </div>`;
     return;
   }
@@ -467,13 +571,13 @@ function renderOverflow(app) {
 // 検証用リセット
 // ------------------------------------------------------------
 function resetSave() {
-  if (!confirm('記憶している言葉が、すべて消えます。よろしいですか？')) return;
+  if (!confirm('記憶している言葉も、あなたの名前も、すべて消えます。よろしいですか？')) return;
   localStorage.removeItem('fernblick_save');
   G.knownWords = [];
   G.seesaw = 0;
   G.afterEffect = false;
-  G.screen = 'title';
-  render();
+  G.playerName = null;
+  startOpening();
 }
 
 window.addEventListener('DOMContentLoaded', init);
