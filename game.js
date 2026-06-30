@@ -33,6 +33,48 @@ function PLAYER_SELF() {
 }
 
 // ------------------------------------------------------------
+// 観測員の個別ステータス
+// 仲間になった瞬間に一度だけ生成され、以後はその個体固有の値として育っていく。
+// (同じ言葉が複数現れることはないので、これは「その言葉、その一体」の記録になる)
+// ------------------------------------------------------------
+function generateInitialStats() {
+  const rand = (base, spread) => base + Math.floor(Math.random() * (spread * 2 + 1)) - spread;
+  const maxHp = rand(22, 4);
+  return {
+    level: 1,
+    exp: 0,
+    resolution: rand(100, 12),  // 個体差。基準100に対して±12のばらつき
+    resistance: rand(100, 12),
+    maxHp,
+    hp: maxHp
+  };
+}
+
+function expRequiredForLevel(level) {
+  return level * 12;
+}
+
+// この観測員に経験値を与える。プレイヤー自身(無冠詞)は対象外。
+function gainExp(observerWord, amount) {
+  const entry = G.knownWords.find(k => k.word === observerWord);
+  if (!entry || !entry.stats) return;
+  const stats = entry.stats;
+  stats.exp += amount;
+  let leveledUp = false;
+  while (stats.exp >= expRequiredForLevel(stats.level)) {
+    stats.exp -= expRequiredForLevel(stats.level);
+    stats.level++;
+    stats.resolution += 3;
+    stats.resistance += 3;
+    stats.maxHp += 2;
+    stats.hp = stats.maxHp; // レベルアップで全快
+    leveledUp = true;
+  }
+  persistSave();
+  return leveledUp;
+}
+
+// ------------------------------------------------------------
 // 初期化
 // ------------------------------------------------------------
 async function init() {
@@ -55,6 +97,16 @@ function loadSave() {
     G.instrumentState = saved.instrumentState || initialInstrumentState();
     G.parts = saved.parts != null ? saved.parts : 0;
     G.gardenUnlocked = saved.gardenUnlocked || false;
+
+    // 個体ステータス導入前のセーブデータには stats が無いので、ここで補う
+    let migrated = false;
+    G.knownWords.forEach(w => {
+      if (!w.stats) {
+        w.stats = generateInitialStats();
+        migrated = true;
+      }
+    });
+    if (migrated) persistSave();
   } catch (e) {
     console.warn('save load failed', e);
   }
@@ -170,18 +222,60 @@ function openBook() {
 }
 
 // ------------------------------------------------------------
+// Wortzimmer(言葉の部屋): 観測員になった言葉たちの記録を見る場所
+// ------------------------------------------------------------
+function openWortzimmer() {
+  G.screen = 'wortzimmer';
+  render();
+}
+
+// 観測員に話しかける。まだ伝えていない用件(庭の依頼など)があれば、ここで渡す。
+function talkToWord(word) {
+  const entry = G.knownWords.find(k => k.word === word);
+  if (!entry) return;
+
+  if (entry.unlocksGarden && !G.gardenUnlocked) {
+    G.gardenUnlocked = true;
+    persistSave();
+    G.lastTalkSubject = entry;
+    G.lastTalkLine = entry.gardenLine;
+    G.screen = 'wortzimmerTalk';
+    render();
+    return;
+  }
+
+  G.lastTalkSubject = entry;
+  G.lastTalkLine = null; // 特に新しい話は無い
+  G.screen = 'wortzimmerTalk';
+  render();
+}
+
+// ------------------------------------------------------------
 // 観測対象を選んで遭遇する(プロトタイプ用の簡易入口)
 // ------------------------------------------------------------
 function encounterRandomSubject() {
   assembleParty();
-  const pool = G.data.subjects.filter(s => !s.important);
+  // 一度仲間になった言葉とは、もう本の中で出会えない(その存在は唯一のものだから)
+  const pool = G.data.subjects.filter(s =>
+    !s.important && !G.knownWords.find(k => k.word === s.word)
+  );
+
+  if (pool.length === 0) {
+    alert('もう、新しい気配は見当たらないようだ。');
+    return;
+  }
+
   const rates = G.data.rareSpawnRates;
   let subject;
-  if (Math.random() < rates.plural) {
-    subject = pool.find(s => s.attr === 'plural');
-  } else {
-    const normals = pool.filter(s => s.attr !== 'plural');
+  const pluralCandidates = pool.filter(s => s.attr === 'plural');
+  const normals = pool.filter(s => s.attr !== 'plural');
+
+  if (pluralCandidates.length > 0 && Math.random() < rates.plural) {
+    subject = pluralCandidates[Math.floor(Math.random() * pluralCandidates.length)];
+  } else if (normals.length > 0) {
     subject = normals[Math.floor(Math.random() * normals.length)];
+  } else {
+    subject = pluralCandidates[Math.floor(Math.random() * pluralCandidates.length)];
   }
   startObservation(subject, false);
 }
@@ -189,6 +283,10 @@ function encounterRandomSubject() {
 function encounterImportantSubject() {
   assembleParty();
   const subject = G.data.subjects.find(s => s.important);
+  if (G.knownWords.find(k => k.word === subject.word)) {
+    alert('Wetterleuchtenは、もうあなたの傍にいる。');
+    return;
+  }
   startObservation(subject, true);
 }
 
@@ -364,6 +462,13 @@ function finishObservation() {
   const o = G.obs;
   const w = o.subject;
 
+  // 観測に付き合ってくれた観測員(プレイヤー自身は除く)は、経験を積む
+  if (o.observer && !o.observer.isPlayer) {
+    G.lastLeveledUp = gainExp(o.observer.word, 5);
+  } else {
+    G.lastLeveledUp = false;
+  }
+
   // 観測の合間に、素材(部品)を拾うことがある
   let gotPart = false;
   if (Math.random() < 0.35) {
@@ -373,17 +478,10 @@ function finishObservation() {
   }
   G.lastGotPart = gotPart;
 
+  // ここに来るのは本来ありえない(入口のencounterRandomSubject/encounterImportantSubjectが
+  // 既知の対象を候補から除外・拒否しているため)。それでも何らかの理由で既知の対象に
+  // たどり着いてしまった場合の保険として残している。
   if (G.knownWords.find(k => k.word === w.word)) {
-    // 既に定着している対象でも、庭への誘いをまだ受け取っていなければここで渡す
-    if (w.unlocksGarden && !G.gardenUnlocked) {
-      G.gardenUnlocked = true;
-      persistSave();
-      G.lastQuizResult = true;
-      G.lastQuizSubject = w;
-      G.lastGardenUnlocked = true;
-      G.screen = 'quizResult';
-      return;
-    }
     G.lastFinished = w;
     G.screen = 'result_finish';
     return;
@@ -408,7 +506,7 @@ function answerMeaningQuiz(idx) {
   let gardenJustUnlocked = false;
   if (correct) {
     if (!G.knownWords.find(k => k.word === subject.word)) {
-      G.knownWords.push({ ...subject });
+      G.knownWords.push({ ...subject, stats: generateInitialStats() });
     }
     if (subject.unlocksGarden && !G.gardenUnlocked) {
       G.gardenUnlocked = true;
@@ -591,6 +689,7 @@ function render() {
         ${renderInstrumentPanel()}
 
         <button class="fb-openbook-btn" onclick="openBook()">扉の前に落ちている本を開く</button>
+        <button class="fb-openbook-btn" onclick="openWortzimmer()">言葉の部屋へ</button>
         <p class="fb-known">記憶している言葉: ${G.knownWords.length}語　／　部品: ${G.parts}</p>
         ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
         <button class="fb-reset" onclick="resetSave()">記憶をすべて消す（検証用）</button>
@@ -606,6 +705,43 @@ function render() {
         <button onclick="encounterRandomSubject()">気配の方へ、目を向ける</button>
         <button onclick="encounterImportantSubject()">遠くで、何かが光っている方へ</button>
         <button class="fb-reset" onclick="G.screen='title'; render();">本を閉じる</button>
+      </div>`;
+    return;
+  }
+
+  if (G.screen === 'wortzimmer') {
+    const attrs = G.data.attributes;
+    app.innerHTML = `
+      <div class="fb-wortzimmer">
+        <h2 class="fb-wortzimmer-title">Wortzimmer</h2>
+        <p class="fb-wortzimmer-sub">言葉の部屋</p>
+        ${G.knownWords.length === 0 ? '<p class="fb-wortzimmer-empty">まだ、誰もここにいない。</p>' : ''}
+        <div class="fb-wortzimmer-list">
+          ${G.knownWords.map(w => `
+            <button class="fb-wordcard" style="border-color:${attrs[w.attr].color}" onclick="talkToWord('${w.word}')">
+              <span class="fb-wordcard-head">
+                <strong>${w.word}</strong>
+                <span class="fb-attrtag" style="background:${attrs[w.attr].color}; color:${readableTextColor(attrs[w.attr].color)};">${attrs[w.attr].label}</span>
+              </span>
+              <span class="fb-wordcard-meaning">${w.meaning}</span>
+              <span class="fb-wordcard-stats">
+                Lv.${w.stats.level}　解像度 ${w.stats.resolution}　耐性 ${w.stats.resistance}　HP ${w.stats.hp}/${w.stats.maxHp}
+              </span>
+            </button>
+          `).join('')}
+        </div>
+        <button class="fb-reset" onclick="G.screen='title'; render();">部屋を出る</button>
+      </div>`;
+    return;
+  }
+
+  if (G.screen === 'wortzimmerTalk') {
+    const w = G.lastTalkSubject;
+    app.innerHTML = `
+      <div class="fb-wortzimmer-talk">
+        <p class="fb-talk-name">${w.word}</p>
+        <p class="fb-talk-line">${G.lastTalkLine || '今は、特に話すことは無いようだ。'}</p>
+        <button onclick="openWortzimmer()">部屋に戻る</button>
       </div>`;
     return;
   }
@@ -635,6 +771,7 @@ function render() {
       <div class="fb-result">
         <p>${G.lastFinished.word}（${G.lastFinished.meaning}）を、また見届けた。</p>
         ${G.lastGotPart ? '<p class="fb-gotpart">足元に、小さな部品が落ちていた。</p>' : ''}
+        ${G.lastLeveledUp ? '<p class="fb-levelup">経験が積み重なり、力が増した。</p>' : ''}
         <button onclick="continueAfterFinish()">拠点へ戻る</button>
       </div>`;
     return;
