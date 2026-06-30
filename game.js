@@ -12,7 +12,10 @@ const G = {
   afterEffect: false,  // 直前の気絶による軽い後遺症フラグ
   obs: null,           // 現在進行中の観測の状態
   playerName: null,    // オープニングで組み立てた名前。未設定ならオープニングへ
-  opening: null        // オープニング進行中の一時状態
+  opening: null,       // オープニング進行中の一時状態
+  clockActionCount: 0,  // ゲーム内時計を進めるための行動カウンタ(永続)
+  instrumentState: {},  // {weathervane: 'broken'|'repaired', ...} 永続
+  parts: 0              // 観測器具の修理に使う素材の所持数(永続)
 };
 
 // プレイヤー自身。まだ何も知らない状態でも、無冠詞の存在として観測ができる。
@@ -47,16 +50,43 @@ function loadSave() {
     const saved = JSON.parse(localStorage.getItem('fernblick_save') || '{}');
     G.knownWords = saved.knownWords || [];
     G.playerName = saved.playerName || null;
+    G.clockActionCount = saved.clockActionCount || 0;
+    G.instrumentState = saved.instrumentState || initialInstrumentState();
+    G.parts = saved.parts != null ? saved.parts : 0;
   } catch (e) {
     console.warn('save load failed', e);
   }
 }
 
+function initialInstrumentState() {
+  const state = {};
+  G.data.instruments.list.forEach(inst => { state[inst.id] = 'broken'; });
+  return state;
+}
+
 function persistSave() {
   localStorage.setItem('fernblick_save', JSON.stringify({
     knownWords: G.knownWords,
-    playerName: G.playerName
+    playerName: G.playerName,
+    clockActionCount: G.clockActionCount,
+    instrumentState: G.instrumentState,
+    parts: G.parts
   }));
+}
+
+// ------------------------------------------------------------
+// ゲーム内時計: リアルタイムには連動せず、行動するたびに進む
+// ------------------------------------------------------------
+function advanceClock() {
+  G.clockActionCount++;
+  persistSave();
+}
+
+function currentPhase() {
+  const phases = G.data.gameClock.phases;
+  const perPhase = G.data.gameClock.actionsPerPhase;
+  const idx = Math.floor(G.clockActionCount / perPhase) % phases.length;
+  return phases[idx];
 }
 
 // ------------------------------------------------------------
@@ -307,6 +337,7 @@ function confirmFaintedReturn() {
   // 知識(永続)は、これまでに十分観測できていた場合のみ別途定着処理(今回は省略しシンプルに)
   G.afterEffect = true;
   G.lastKept = kept;
+  G.lastGotPart = false; // 気絶時は部品どころではないので拾えない
   G.obs = null;
   G.screen = 'result_faint';
   render();
@@ -320,6 +351,15 @@ function confirmFaintedReturn() {
 function finishObservation() {
   const o = G.obs;
   const w = o.subject;
+
+  // 観測の合間に、素材(部品)を拾うことがある
+  let gotPart = false;
+  if (Math.random() < 0.35) {
+    G.parts++;
+    gotPart = true;
+    persistSave();
+  }
+  G.lastGotPart = gotPart;
 
   if (G.knownWords.find(k => k.word === w.word)) {
     G.lastFinished = w;
@@ -356,6 +396,7 @@ function answerMeaningQuiz(idx) {
 }
 
 function backToTitleAfterResult() {
+  advanceClock();
   G.afterEffect = false; // 1回休んだことで後遺症は解消(簡易処理)
   G.obs = null;
   G.screen = 'title';
@@ -363,8 +404,107 @@ function backToTitleAfterResult() {
 }
 
 function continueAfterFinish() {
+  advanceClock();
   G.obs = null;
   G.screen = 'title';
+  render();
+}
+
+// ------------------------------------------------------------
+// 拠点(観測所)の描画
+// ------------------------------------------------------------
+
+// フェーズごとの空の色。リアルタイムには依存しない、ゲーム内独自の時計。
+const PHASE_SKY = {
+  '夜明け': ['#d9c8d6', '#f2dfc9'],
+  '昼':     ['#cfe0ea', '#eef3ee'],
+  '夕暮れ': ['#e8b48a', '#cf8f8f'],
+  '夜':     ['#3a3550', '#5a4f6a']
+};
+
+function renderObservatorySvg(phase) {
+  const [skyTop, skyBottom] = PHASE_SKY[phase] || PHASE_SKY['昼'];
+  const repaired = id => G.instrumentState[id] === 'repaired';
+
+  // 観測小屋(半分崩れた建物)と、3つの観測器具を簡易な線画で表現する。
+  // 修理済みの器具は実線で、壊れたものは破線+傾きで表す。
+  return `
+    <svg class="fb-observatory-svg" viewBox="0 0 300 160" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${skyTop}" />
+          <stop offset="100%" stop-color="${skyBottom}" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="300" height="160" fill="url(#skyGrad)" />
+
+      <!-- 地面 -->
+      <rect x="0" y="130" width="300" height="30" fill="#7a8b6f" opacity="0.5" />
+
+      <!-- 半分崩れた観測小屋 -->
+      <polygon points="60,130 60,90 100,70 140,90 140,130" fill="none" stroke="#5a5560" stroke-width="2" />
+      <line x1="100" y1="70" x2="100" y2="50" stroke="#5a5560" stroke-width="2" stroke-dasharray="3,3" />
+
+      <!-- 風向計 -->
+      <g transform="translate(170,60)">
+        <line x1="0" y1="0" x2="0" y2="40" stroke="#5a5560" stroke-width="${repaired('weathervane') ? 2 : 1.4}" stroke-dasharray="${repaired('weathervane') ? 'none' : '2,3'}" />
+        <line x1="-12" y1="0" x2="12" y2="${repaired('weathervane') ? -4 : 6}" stroke="${repaired('weathervane') ? '#2980b9' : '#999'}" stroke-width="2" />
+      </g>
+
+      <!-- 雨量計 -->
+      <g transform="translate(200,100)">
+        <rect x="-6" y="0" width="12" height="20" fill="none" stroke="${repaired('raingauge') ? '#2980b9' : '#999'}" stroke-width="1.6" stroke-dasharray="${repaired('raingauge') ? 'none' : '2,2'}" />
+      </g>
+
+      <!-- 気圧計 -->
+      <g transform="translate(225,70)">
+        <circle r="10" fill="none" stroke="${repaired('barometer') ? '#c0392b' : '#999'}" stroke-width="1.6" stroke-dasharray="${repaired('barometer') ? 'none' : '2,2'}" />
+      </g>
+    </svg>`;
+}
+
+function renderEnvironmentDetails(phase) {
+  const details = G.data.environmentDetails.list;
+  // 行動回数を簡易シードにして、毎回少しだけ違う表情に見せる(完全ランダムだとチラつくため)
+  const seed = G.clockActionCount;
+  const lines = {
+    fungus:   ['壁の隙間に、小さな菌が並んでいる。', '苔むした石の上に、新しい菌糸が伸びている。'],
+    creature: ['どこかで、何かが動いた気配がする。', '虫の羽音が、遠くでかすかに響いている。'],
+    relic:    ['錆びた工具が、土に半分埋もれている。', '誰かの字で、何か書かれた紙片が落ちている。'],
+    clouds:   ['雲が、ゆっくり形を変えていく。', '雲の切れ間から、薄い光が差している。'],
+    skycolor: [`${phase}の光が、あたりをそめている。`, '空の色が、いつもと少し違う気がする。']
+  };
+  const picked = details.map((d, i) => {
+    const variants = lines[d.id] || [d.label];
+    const text = variants[(seed + i) % variants.length];
+    return `<p class="fb-envline">${text}</p>`;
+  }).join('');
+  return `<div class="fb-environment">${picked}</div>`;
+}
+
+function renderInstrumentPanel() {
+  const instruments = G.data.instruments.list;
+  const rows = instruments.map(inst => {
+    const state = G.instrumentState[inst.id];
+    if (state === 'repaired') {
+      return `<p class="fb-instrument-row fb-repaired">${inst.name}：直っている</p>`;
+    }
+    const canRepair = G.parts >= inst.partsCost;
+    return `
+      <p class="fb-instrument-row">
+        ${inst.name}：壊れている（部品 ${inst.partsCost}個必要）
+        <button ${canRepair ? '' : 'disabled'} onclick="repairInstrument('${inst.id}')">直す</button>
+      </p>`;
+  }).join('');
+  return `<div class="fb-instruments">${rows}</div>`;
+}
+
+function repairInstrument(id) {
+  const inst = G.data.instruments.list.find(i => i.id === id);
+  if (G.parts < inst.partsCost) return;
+  G.parts -= inst.partsCost;
+  G.instrumentState[id] = 'repaired';
+  persistSave();
   render();
 }
 
@@ -381,14 +521,22 @@ function render() {
   }
 
   if (G.screen === 'title') {
+    const phase = currentPhase();
     app.innerHTML = `
       <div class="fb-title">
         <h1>Fernblick</h1>
         <p class="fb-sub">遠い眺め</p>
         ${G.playerName ? `<p class="fb-playername">${G.playerName}</p>` : ''}
+
+        ${renderObservatorySvg(phase)}
+        <p class="fb-phase-label">今は${phase}</p>
+
+        ${renderEnvironmentDetails(phase)}
+        ${renderInstrumentPanel()}
+
         <button onclick="encounterRandomSubject()">観測に出る</button>
         <button onclick="encounterImportantSubject()">重要な観測へ（Wetterleuchten）</button>
-        <p class="fb-known">記憶している言葉: ${G.knownWords.length}語</p>
+        <p class="fb-known">記憶している言葉: ${G.knownWords.length}語　／　部品: ${G.parts}</p>
         ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
         <button class="fb-reset" onclick="resetSave()">記憶をすべて消す（検証用）</button>
       </div>`;
@@ -419,6 +567,7 @@ function render() {
     app.innerHTML = `
       <div class="fb-result">
         <p>${G.lastFinished.word}（${G.lastFinished.meaning}）を、また見届けた。</p>
+        ${G.lastGotPart ? '<p class="fb-gotpart">足元に、小さな部品が落ちていた。</p>' : ''}
         <button onclick="continueAfterFinish()">拠点へ戻る</button>
       </div>`;
     return;
@@ -443,6 +592,7 @@ function render() {
           ? `${s.word}は、あなたと行動することを選んだようだ。`
           : 'まだ、お互いに見えていない部分が多いらしい。'}</p>
         ${G.lastQuizResult ? `<p class="fb-meaning">${s.word} — ${s.meaning}</p>` : ''}
+        ${G.lastGotPart ? '<p class="fb-gotpart">足元に、小さな部品が落ちていた。</p>' : ''}
         <button onclick="continueAfterFinish()">拠点へ戻る</button>
       </div>`;
     return;

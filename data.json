@@ -47,5 +47,28 @@
     "max": 100,
     "afterEffectRecoveryPenalty": 0.5,
     "uiCorruptionStart": 60
+  },
+  "instruments": {
+    "_comment": "拠点の観測器具。state: broken(壊れている) / repaired(機能している)。修理にはpartsCostだけ素材が要る",
+    "list": [
+      { "id": "weathervane", "name": "風向計", "state": "broken", "partsCost": 2 },
+      { "id": "raingauge",   "name": "雨量計",  "state": "broken", "partsCost": 2 },
+      { "id": "barometer",   "name": "気圧計",  "state": "broken", "partsCost": 3 }
+    ]
+  },
+  "gameClock": {
+    "_comment": "プレイヤーの行動回数で進む、ゲーム内独自の時刻。リアルタイムには連動しない",
+    "phases": ["夜明け", "昼", "夕暮れ", "夜"],
+    "actionsPerPhase": 3
+  },
+  "environmentDetails": {
+    "_comment": "拠点周辺で常に見られる、時刻・天候によって表情を変える環境描写",
+    "list": [
+      { "id": "fungus",  "label": "菌類の繁殖" },
+      { "id": "creature","label": "生物の気配" },
+      { "id": "relic",   "label": "人工物の名残" },
+      { "id": "clouds",  "label": "雲の形" },
+      { "id": "skycolor","label": "夕焼けの色" }
+    ]
   }
 }
