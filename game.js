@@ -742,6 +742,7 @@ function render() {
         <p class="fb-known">記憶している言葉: ${G.knownWords.length}語　／　部品: ${G.parts}</p>
         ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
         <button class="fb-reset" onclick="resetSave()">記憶をすべて消す（検証用）</button>
+        <button class="fb-reset" onclick="forceResetGardenFlag()">庭フラグだけリセット（検証用）</button>
       </div>`;
     return;
   }
@@ -1010,7 +1011,21 @@ function resetSave() {
   G.seesaw = 0;
   G.afterEffect = false;
   G.playerName = null;
+  G.gardenUnlocked = false;
+  G.clockActionCount = 0;
+  G.instrumentState = initialInstrumentState();
+  G.parts = 0;
+  G.party = [];
   startOpening();
+}
+
+// 過去のバージョンの実行により、gardenUnlockedだけが意図せずtrueのまま
+// 残ってしまっているケースのための、ピンポイントな検証用リセット。
+function forceResetGardenFlag() {
+  G.gardenUnlocked = false;
+  persistSave();
+  alert('庭の依頼フラグをリセットした。Raunenに話しかけるか、観測から拠点に戻ると、また依頼が伝えられるはず。');
+  render();
 }
 
 window.addEventListener('DOMContentLoaded', init);
