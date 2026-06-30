@@ -423,81 +423,77 @@ function continueAfterFinish() {
 // 拠点(観測所)の描画
 // ------------------------------------------------------------
 
-// フェーズごとの空気の色。リアルタイムには依存しない、ゲーム内独自の時計。
-const PHASE_SKY = {
-  '夜明け': { fog1: '#5a4d4a', fog2: '#8a7560', ground: '#3a3530', wood: '#4a4038' },
-  '昼':     { fog1: '#6b6a64', fog2: '#a8a290', ground: '#403d34', wood: '#544a3e' },
-  '夕暮れ': { fog1: '#6e5648', fog2: '#a37a52', ground: '#2e2824', wood: '#4a3a2c' },
-  '夜':     { fog1: '#2a2630', fog2: '#3d3a48', ground: '#1c1a20', wood: '#2a2420' }
+// フェーズごとの地面の色味だけを淡く変化させる。観測所の他の要素は固定。
+const PHASE_GROUND = {
+  '夜明け': ['#f2e9e4', '#dcd3da'],
+  '昼':     ['#eef3ee', '#d8d6dc'],
+  '夕暮れ': ['#f0e0d2', '#d9c4bf'],
+  '夜':     ['#dcdce2', '#bcb9c4']
 };
 
 function renderObservatorySvg(phase) {
-  const tone = PHASE_SKY[phase] || PHASE_SKY['昼'];
-  const repaired = id => G.instrumentState[id] === 'repaired';
-  const moss = '#5a6b4a'; // 苔の色。修理前の器具に絡みつかせる
+  const [groundTop, groundBottom] = PHASE_GROUND[phase] || PHASE_GROUND['昼'];
 
   return `
     <svg class="fb-observatory-svg" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet">
       <defs>
-        <linearGradient id="fogGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${tone.fog2}" />
-          <stop offset="55%" stop-color="${tone.fog1}" />
-          <stop offset="100%" stop-color="${tone.ground}" />
+        <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${groundTop}" />
+          <stop offset="100%" stop-color="${groundBottom}" />
         </linearGradient>
-        <radialGradient id="lightPool" cx="75%" cy="20%" r="60%">
-          <stop offset="0%" stop-color="${tone.fog2}" stop-opacity="0.55" />
-          <stop offset="100%" stop-color="${tone.fog2}" stop-opacity="0" />
-        </radialGradient>
       </defs>
+      <rect x="0" y="0" width="300" height="200" fill="url(#groundGrad)" />
 
-      <rect x="0" y="0" width="300" height="200" fill="url(#fogGrad)" />
-      <rect x="0" y="0" width="300" height="200" fill="url(#lightPool)" />
+      <g transform="translate(70,12)">
+        <rect x="0" y="0" width="90" height="130" fill="#cfc9bd" opacity="0.55" />
+        <rect x="4" y="4" width="82" height="122" fill="none" stroke="#ada58f" stroke-width="1.4" opacity="0.6" />
+        <rect x="18" y="14" width="54" height="40" fill="#e8e4da" opacity="0.5" />
+        <line x1="45" y1="14" x2="45" y2="54" stroke="#ada58f" stroke-width="1.2" opacity="0.5" />
+        <line x1="18" y1="34" x2="72" y2="34" stroke="#ada58f" stroke-width="1.2" opacity="0.5" />
 
-      <!-- 地面、湿った敷石 -->
-      <rect x="0" y="150" width="300" height="50" fill="${tone.ground}" />
-      <ellipse cx="230" cy="175" rx="55" ry="8" fill="#000" opacity="0.12" />
-      <ellipse cx="120" cy="185" rx="40" ry="6" fill="#000" opacity="0.1" />
+        <path d="M8,4 C4,30 14,46 6,72 C0,90 12,108 4,128" stroke="#9bb083" stroke-width="2.2" fill="none" opacity="0.6" />
+        <ellipse cx="6" cy="20" rx="3.5" ry="2" fill="#9bb083" opacity="0.6" transform="rotate(20 6 20)" />
+        <ellipse cx="11" cy="48" rx="3" ry="1.8" fill="#a3b88a" opacity="0.55" transform="rotate(-15 11 48)" />
+        <ellipse cx="3" cy="66" rx="3.2" ry="1.9" fill="#9bb083" opacity="0.6" transform="rotate(30 3 66)" />
+        <ellipse cx="10" cy="92" rx="3" ry="1.8" fill="#a3b88a" opacity="0.55" transform="rotate(-10 10 92)" />
+        <ellipse cx="5" cy="115" rx="3.2" ry="1.9" fill="#9bb083" opacity="0.6" transform="rotate(15 5 115)" />
 
-      <!-- 奥に霧に沈む観測器具のシルエット -->
-      <g opacity="0.65">
-        <!-- 風向計 -->
-        <g transform="translate(225,55)">
-          <line x1="0" y1="0" x2="0" y2="60" stroke="${repaired('weathervane') ? '#cfae7a' : tone.wood}" stroke-width="${repaired('weathervane') ? 2 : 2.4}" />
-          <line x1="-16" y1="0" x2="16" y2="${repaired('weathervane') ? -6 : 8}" stroke="${repaired('weathervane') ? '#cfae7a' : moss}" stroke-width="3" stroke-linecap="round" />
-          <line x1="-10" y1="14" x2="10" y2="${repaired('weathervane') ? 6 : 20}" stroke="${repaired('weathervane') ? '#cfae7a' : moss}" stroke-width="2.4" stroke-linecap="round" />
-        </g>
-        <!-- 雨量計 -->
-        <g transform="translate(255,95)">
-          <rect x="-7" y="0" width="14" height="26" rx="2" fill="${repaired('raingauge') ? '#cfae7a' : tone.wood}" />
-          <rect x="-9" y="24" width="18" height="6" fill="${tone.ground}" opacity="0.5" />
-        </g>
-        <!-- 気圧計 -->
-        <g transform="translate(280,70)">
-          <circle r="11" fill="${repaired('barometer') ? '#cfae7a' : tone.wood}" />
-          <circle r="11" fill="none" stroke="${moss}" stroke-width="${repaired('barometer') ? 0 : 1.6}" stroke-dasharray="2,3" />
-        </g>
+        <rect x="74" y="76" width="3" height="10" rx="1" fill="#b79a7a" opacity="0.85" />
       </g>
 
-      <!-- 手前: 朽ちた木の扉(画面の左寄りに大きく) -->
-      <g transform="translate(20,10)">
-        <rect x="0" y="0" width="100" height="160" fill="${tone.wood}" />
-        <rect x="6" y="6" width="88" height="148" fill="none" stroke="#000" stroke-opacity="0.25" stroke-width="2" />
-        <!-- 窓 -->
-        <rect x="20" y="20" width="60" height="50" fill="#14110f" opacity="0.7" />
-        <line x1="50" y1="20" x2="50" y2="70" stroke="#000" stroke-opacity="0.3" stroke-width="2" />
-        <line x1="20" y1="45" x2="80" y2="45" stroke="#000" stroke-opacity="0.3" stroke-width="2" />
-        <!-- 蔦(苔の侵食) -->
-        <path d="M85,0 C90,30 75,50 88,80 C95,100 80,120 90,160" stroke="${moss}" stroke-width="3" fill="none" opacity="0.8" />
-        <path d="M0,40 C10,60 4,90 12,130" stroke="${moss}" stroke-width="2" fill="none" opacity="0.6" />
-        <!-- 取っ手 -->
-        <circle cx="78" cy="95" r="2.4" fill="#8a7355" />
+      <g opacity="0.9">
+        <rect x="70" y="150" width="60" height="10" rx="1" fill="#d6d1c6" />
+        <rect x="55" y="160" width="90" height="12" rx="1" fill="#cfcac0" />
+        <rect x="40" y="172" width="120" height="14" rx="1" fill="#c7c2b8" />
       </g>
 
-      <!-- 扉の前に置かれた本 -->
-      <g transform="translate(95,168) rotate(-3)">
-        <rect x="0" y="0" width="46" height="16" rx="1.5" fill="#8a7048" stroke="#5c4a2c" stroke-width="1.2" />
-        <line x1="4" y1="3" x2="42" y2="3" stroke="#5c4a2c" stroke-width="0.6" opacity="0.6" />
-        <line x1="4" y1="6" x2="36" y2="6" stroke="#5c4a2c" stroke-width="0.6" opacity="0.4" />
+      <g transform="translate(95,158) rotate(-2)">
+        <rect x="0" y="0" width="56" height="20" rx="1.5" fill="#e8e2cf" stroke="#a8916e" stroke-width="1" />
+        <line x1="0" y1="4" x2="56" y2="4" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="7" x2="56" y2="7" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="10" x2="56" y2="10" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="13" x2="56" y2="13" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="16" x2="56" y2="16" stroke="#cfc6a8" stroke-width="0.6" />
+        <rect x="0" y="0" width="3" height="20" fill="#cdbb98" />
+      </g>
+
+      <g opacity="0.75">
+        <path d="M230,200 C228,180 240,170 236,150 C233,138 244,128 240,112" stroke="#8fa873" stroke-width="2" fill="none" />
+        <path d="M252,200 C255,178 244,164 250,144 C253,132 242,122 248,108" stroke="#9bb083" stroke-width="1.8" fill="none" />
+        <path d="M272,200 C270,184 280,172 276,156 C273,146 282,136 278,124" stroke="#86a06a" stroke-width="1.8" fill="none" />
+
+        <ellipse cx="237" cy="160" rx="6" ry="3" fill="#9bb083" transform="rotate(-25 237 160)" />
+        <ellipse cx="240" cy="135" rx="5.5" ry="3" fill="#a3b88a" transform="rotate(15 240 135)" />
+        <ellipse cx="248" cy="118" rx="5" ry="2.8" fill="#8fa873" transform="rotate(-20 248 118)" />
+        <ellipse cx="251" cy="170" rx="5.5" ry="3" fill="#86a06a" transform="rotate(20 251 170)" />
+        <ellipse cx="249" cy="150" rx="5" ry="2.8" fill="#9bb083" transform="rotate(-10 249 150)" />
+        <ellipse cx="277" cy="148" rx="5.5" ry="3" fill="#a3b88a" transform="rotate(25 277 148)" />
+        <ellipse cx="274" cy="128" rx="5" ry="2.8" fill="#8fa873" transform="rotate(-15 274 128)" />
+        <ellipse cx="280" cy="180" rx="5.5" ry="3" fill="#9bb083" transform="rotate(10 280 180)" />
+
+        <ellipse cx="260" cy="192" rx="9" ry="4" fill="#9bb083" opacity="0.5" />
+        <ellipse cx="290" cy="195" rx="7" ry="3.5" fill="#86a06a" opacity="0.5" />
+        <ellipse cx="220" cy="195" rx="6" ry="3" fill="#a3b88a" opacity="0.5" />
       </g>
     </svg>`;
 }
