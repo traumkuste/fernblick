@@ -16,7 +16,8 @@ const G = {
   clockActionCount: 0,  // ゲーム内時計を進めるための行動カウンタ(永続)
   instrumentState: {},  // {weathervane: 'broken'|'repaired', ...} 永続
   parts: 0,              // 観測器具の修理に使う素材の所持数(永続)
-  gardenUnlocked: false  // Raunenの依頼を受けたかどうか(永続)
+  gardenUnlocked: false, // Raunenの依頼を受けたかどうか(永続)
+  titleTab: 'scene'      // 拠点画面のタブ状態(景色/器具)。永続化しない
 };
 
 // プレイヤー自身。まだ何も知らない状態でも、無冠詞の存在として観測ができる。
@@ -233,6 +234,8 @@ function openWortzimmer() {
 function talkToWord(word) {
   const entry = G.knownWords.find(k => k.word === word);
   if (!entry) return;
+
+  G.talkReturnTo = 'wortzimmer'; // Wortzimmerから話しかけた場合、戻り先もWortzimmer
 
   if (entry.unlocksGarden && !G.gardenUnlocked) {
     G.gardenUnlocked = true;
@@ -521,18 +524,34 @@ function answerMeaningQuiz(idx) {
   render();
 }
 
+// 拠点(タイトル画面)に戻る。その直前に、まだ伝えていない用件を持つ観測員がいれば、
+// ここで自動的に話しかけてくる(Wortzimmerを自分から訪れる、という発見任せにしない)。
+function returnToTitleOrAutoTalk() {
+  const messenger = G.knownWords.find(k => k.unlocksGarden && !G.gardenUnlocked);
+  if (messenger) {
+    G.gardenUnlocked = true;
+    persistSave();
+    G.talkReturnTo = 'title'; // 自動会話の場合、戻り先は拠点
+    G.lastTalkSubject = messenger;
+    G.lastTalkLine = messenger.gardenLine;
+    G.screen = 'wortzimmerTalk';
+    return;
+  }
+  G.screen = 'title';
+}
+
 function backToTitleAfterResult() {
   advanceClock();
   G.afterEffect = false; // 1回休んだことで後遺症は解消(簡易処理)
   G.obs = null;
-  G.screen = 'title';
+  returnToTitleOrAutoTalk();
   render();
 }
 
 function continueAfterFinish() {
   advanceClock();
   G.obs = null;
-  G.screen = 'title';
+  returnToTitleOrAutoTalk();
   render();
 }
 
@@ -676,6 +695,7 @@ function render() {
 
   if (G.screen === 'title') {
     const phase = currentPhase();
+    const tab = G.titleTab || 'scene';
     app.innerHTML = `
       <div class="fb-title">
         <h1>${G.data.meta.title}</h1>
@@ -685,11 +705,19 @@ function render() {
         ${renderObservatorySvg(phase)}
         <p class="fb-phase-label">今は${phase}</p>
 
-        ${renderEnvironmentDetails(phase)}
-        ${renderInstrumentPanel()}
+        <div class="fb-tabbar">
+          <button class="fb-tab ${tab === 'scene' ? 'fb-tab-active' : ''}" onclick="G.titleTab='scene'; render();">景色</button>
+          <button class="fb-tab ${tab === 'instruments' ? 'fb-tab-active' : ''}" onclick="G.titleTab='instruments'; render();">器具</button>
+        </div>
+        <div class="fb-tabpanel">
+          ${tab === 'scene' ? renderEnvironmentDetails(phase) : renderInstrumentPanel()}
+        </div>
 
-        <button class="fb-openbook-btn" onclick="openBook()">扉の前に落ちている本を開く</button>
-        <button class="fb-openbook-btn" onclick="openWortzimmer()">言葉の部屋へ</button>
+        <div class="fb-actions">
+          <button class="fb-openbook-btn" onclick="openBook()">扉の前に落ちている本を開く</button>
+          <button class="fb-openbook-btn" onclick="openWortzimmer()">言葉の部屋へ</button>
+        </div>
+
         <p class="fb-known">記憶している言葉: ${G.knownWords.length}語　／　部品: ${G.parts}</p>
         ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
         <button class="fb-reset" onclick="resetSave()">記憶をすべて消す（検証用）</button>
@@ -737,11 +765,13 @@ function render() {
 
   if (G.screen === 'wortzimmerTalk') {
     const w = G.lastTalkSubject;
+    const returnLabel = G.talkReturnTo === 'wortzimmer' ? '部屋に戻る' : '拠点へ戻る';
+    const returnAction = G.talkReturnTo === 'wortzimmer' ? 'openWortzimmer()' : "G.screen='title'; render();";
     app.innerHTML = `
       <div class="fb-wortzimmer-talk">
         <p class="fb-talk-name">${w.word}</p>
         <p class="fb-talk-line">${G.lastTalkLine || '今は、特に話すことは無いようだ。'}</p>
-        <button onclick="openWortzimmer()">部屋に戻る</button>
+        <button onclick="${returnAction}">${returnLabel}</button>
       </div>`;
     return;
   }

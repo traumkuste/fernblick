@@ -54,12 +54,22 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-aftereffect { color: var(--accent); font-size: 12px; margin-top: 6px; }
 .fb-reset { background: transparent; border: 1px solid #c9b8a8; color: #9a7d6a; font-size: 11px; margin-top: 10px; }
 
-.fb-phase-label { font-size: 11px; color: var(--dim); margin-bottom: 14px; }
+.fb-phase-label { font-size: 11px; color: var(--dim); margin-bottom: 10px; }
 
-.fb-environment { text-align: left; font-size: 12px; color: var(--ink); opacity: 0.85; line-height: 1.8; margin: 0 auto 16px; max-width: 320px; }
+.fb-tabbar { display: flex; justify-content: center; gap: 4px; margin-bottom: 10px; }
+.fb-tab {
+  font-size: 12px; padding: 5px 18px; margin: 0;
+  background: transparent; border: 1px solid var(--dim); opacity: 0.6;
+}
+.fb-tab-active { opacity: 1; border-color: var(--accent); color: var(--accent); }
+.fb-tabpanel { min-height: 90px; margin-bottom: 14px; }
+
+.fb-actions { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 10px; }
+
+.fb-environment { text-align: left; font-size: 12px; color: var(--ink); opacity: 0.85; line-height: 1.8; max-width: 320px; margin: 0 auto; }
 .fb-envline { margin: 2px 0; }
 
-.fb-instruments { text-align: left; font-size: 12px; max-width: 320px; margin: 0 auto 18px; border-top: 1px dotted var(--dim); padding-top: 10px; }
+.fb-instruments { text-align: left; font-size: 12px; max-width: 320px; margin: 0 auto; }
 .fb-instrument-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; }
 .fb-instrument-row.fb-repaired { color: var(--accent); }
 .fb-instrument-row button { font-size: 11px; padding: 4px 10px; margin: 0; }
