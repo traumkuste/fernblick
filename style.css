@@ -65,8 +65,37 @@ button.fb-selected { border-color: var(--accent); background: rgba(183,154,122,0
 .fb-instrument-row button { font-size: 11px; padding: 4px 10px; margin: 0; }
 
 .fb-gotpart { color: var(--accent); font-size: 12px; margin-top: 6px; }
+.fb-gardenline { font-style: italic; color: var(--ink); font-size: 14px; margin-top: 14px; line-height: 1.8; }
 
-.fb-observatory-svg { width: 100%; max-width: 320px; border-radius: 8px; margin: 8px 0 4px; display: block; }
+.fb-observatory-photo {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+  margin: 8px auto 4px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.fb-observatory-photo img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: blur(1.5px) saturate(0.7) brightness(1.05);
+  opacity: 0.82;
+  transition: filter 1.5s ease, opacity 1.5s ease;
+}
+.fb-observatory-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: background 2s ease;
+}
+.fb-observatory-photo::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 28px 6px rgba(255,255,255,0.5);
+  pointer-events: none;
+}
 .fb-openbook-btn { display: block; margin: 14px auto 6px; }
 
 .fb-book { text-align: center; padding-top: 22vh; }
