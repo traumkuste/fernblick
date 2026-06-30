@@ -455,7 +455,7 @@ function renderObservatoryImage(phase) {
   const overlay = PHASE_OVERLAY[phase] || PHASE_OVERLAY['昼'];
   return `
     <div class="fb-observatory-photo">
-      <img src="assets/door-book.jpg" alt="扉の前に落ちている本" />
+      <img src="door-book.jpg" alt="扉の前に落ちている本" />
       <div class="fb-observatory-overlay" style="background:${overlay}"></div>
     </div>`;
 }
