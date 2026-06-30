@@ -444,20 +444,79 @@ function continueAfterFinish() {
 
 // フェーズごとの地面の色味だけを淡く変化させる。観測所の他の要素は固定。
 // フェーズごとの色温度オーバーレイ。画像自体は変えず、薄い色を重ねて表情を変える。
-const PHASE_OVERLAY = {
-  '夜明け': 'rgba(242, 220, 210, 0.18)',
-  '昼':     'rgba(238, 243, 238, 0.08)',
-  '夕暮れ': 'rgba(214, 150, 110, 0.22)',
-  '夜':     'rgba(40, 38, 60, 0.38)'
+// フェーズごとの地面の色味だけを淡く変化させる。観測所の他の要素は固定。
+const PHASE_GROUND = {
+  '夜明け': ['#f2e9e4', '#dcd3da'],
+  '昼':     ['#eef3ee', '#d8d6dc'],
+  '夕暮れ': ['#f0e0d2', '#d9c4bf'],
+  '夜':     ['#dcdce2', '#bcb9c4']
 };
 
-function renderObservatoryImage(phase) {
-  const overlay = PHASE_OVERLAY[phase] || PHASE_OVERLAY['昼'];
+function renderObservatorySvg(phase) {
+  const [groundTop, groundBottom] = PHASE_GROUND[phase] || PHASE_GROUND['昼'];
+
   return `
-    <div class="fb-observatory-photo">
-      <img src="door-book.jpg" alt="扉の前に落ちている本" />
-      <div class="fb-observatory-overlay" style="background:${overlay}"></div>
-    </div>`;
+    <svg class="fb-observatory-svg" viewBox="0 0 300 200" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="${groundTop}" />
+          <stop offset="100%" stop-color="${groundBottom}" />
+        </linearGradient>
+      </defs>
+      <rect x="0" y="0" width="300" height="200" fill="url(#groundGrad)" />
+
+      <g transform="translate(70,12)">
+        <rect x="0" y="0" width="90" height="130" fill="#cfc9bd" opacity="0.55" />
+        <rect x="4" y="4" width="82" height="122" fill="none" stroke="#ada58f" stroke-width="1.4" opacity="0.6" />
+        <rect x="18" y="14" width="54" height="40" fill="#e8e4da" opacity="0.5" />
+        <line x1="45" y1="14" x2="45" y2="54" stroke="#ada58f" stroke-width="1.2" opacity="0.5" />
+        <line x1="18" y1="34" x2="72" y2="34" stroke="#ada58f" stroke-width="1.2" opacity="0.5" />
+
+        <path d="M8,4 C4,30 14,46 6,72 C0,90 12,108 4,128" stroke="#9bb083" stroke-width="2.2" fill="none" opacity="0.6" />
+        <ellipse cx="6" cy="20" rx="3.5" ry="2" fill="#9bb083" opacity="0.6" transform="rotate(20 6 20)" />
+        <ellipse cx="11" cy="48" rx="3" ry="1.8" fill="#a3b88a" opacity="0.55" transform="rotate(-15 11 48)" />
+        <ellipse cx="3" cy="66" rx="3.2" ry="1.9" fill="#9bb083" opacity="0.6" transform="rotate(30 3 66)" />
+        <ellipse cx="10" cy="92" rx="3" ry="1.8" fill="#a3b88a" opacity="0.55" transform="rotate(-10 10 92)" />
+        <ellipse cx="5" cy="115" rx="3.2" ry="1.9" fill="#9bb083" opacity="0.6" transform="rotate(15 5 115)" />
+
+        <rect x="74" y="76" width="3" height="10" rx="1" fill="#b79a7a" opacity="0.85" />
+      </g>
+
+      <g opacity="0.9">
+        <rect x="70" y="150" width="60" height="10" rx="1" fill="#d6d1c6" />
+        <rect x="55" y="160" width="90" height="12" rx="1" fill="#cfcac0" />
+        <rect x="40" y="172" width="120" height="14" rx="1" fill="#c7c2b8" />
+      </g>
+
+      <g transform="translate(95,158) rotate(-2)">
+        <rect x="0" y="0" width="56" height="20" rx="1.5" fill="#e8e2cf" stroke="#a8916e" stroke-width="1" />
+        <line x1="0" y1="4" x2="56" y2="4" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="7" x2="56" y2="7" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="10" x2="56" y2="10" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="13" x2="56" y2="13" stroke="#cfc6a8" stroke-width="0.6" />
+        <line x1="0" y1="16" x2="56" y2="16" stroke="#cfc6a8" stroke-width="0.6" />
+        <rect x="0" y="0" width="3" height="20" fill="#cdbb98" />
+      </g>
+
+      <g opacity="0.75">
+        <path d="M230,200 C228,180 240,170 236,150 C233,138 244,128 240,112" stroke="#8fa873" stroke-width="2" fill="none" />
+        <path d="M252,200 C255,178 244,164 250,144 C253,132 242,122 248,108" stroke="#9bb083" stroke-width="1.8" fill="none" />
+        <path d="M272,200 C270,184 280,172 276,156 C273,146 282,136 278,124" stroke="#86a06a" stroke-width="1.8" fill="none" />
+
+        <ellipse cx="237" cy="160" rx="6" ry="3" fill="#9bb083" transform="rotate(-25 237 160)" />
+        <ellipse cx="240" cy="135" rx="5.5" ry="3" fill="#a3b88a" transform="rotate(15 240 135)" />
+        <ellipse cx="248" cy="118" rx="5" ry="2.8" fill="#8fa873" transform="rotate(-20 248 118)" />
+        <ellipse cx="251" cy="170" rx="5.5" ry="3" fill="#86a06a" transform="rotate(20 251 170)" />
+        <ellipse cx="249" cy="150" rx="5" ry="2.8" fill="#9bb083" transform="rotate(-10 249 150)" />
+        <ellipse cx="277" cy="148" rx="5.5" ry="3" fill="#a3b88a" transform="rotate(25 277 148)" />
+        <ellipse cx="274" cy="128" rx="5" ry="2.8" fill="#8fa873" transform="rotate(-15 274 128)" />
+        <ellipse cx="280" cy="180" rx="5.5" ry="3" fill="#9bb083" transform="rotate(10 280 180)" />
+
+        <ellipse cx="260" cy="192" rx="9" ry="4" fill="#9bb083" opacity="0.5" />
+        <ellipse cx="290" cy="195" rx="7" ry="3.5" fill="#86a06a" opacity="0.5" />
+        <ellipse cx="220" cy="195" rx="6" ry="3" fill="#a3b88a" opacity="0.5" />
+      </g>
+    </svg>`;
 }
 
 function renderEnvironmentDetails(phase) {
@@ -525,7 +584,7 @@ function render() {
         <p class="fb-sub">${G.data.meta.subtitle}</p>
         ${G.playerName ? `<p class="fb-playername">${G.playerName}</p>` : ''}
 
-        ${renderObservatoryImage(phase)}
+        ${renderObservatorySvg(phase)}
         <p class="fb-phase-label">今は${phase}</p>
 
         ${renderEnvironmentDetails(phase)}
