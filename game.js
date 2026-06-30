@@ -521,20 +521,14 @@ function answerMeaningQuiz(idx) {
   const subject = G.quiz.subject;
   const correct = chosen.word === subject.word;
 
-  let gardenJustUnlocked = false;
   if (correct) {
     if (!G.knownWords.find(k => k.word === subject.word)) {
       G.knownWords.push({ ...subject, stats: generateInitialStats() });
-    }
-    if (subject.unlocksGarden && !G.gardenUnlocked) {
-      G.gardenUnlocked = true;
-      gardenJustUnlocked = true;
     }
     persistSave();
   }
   G.lastQuizResult = correct;
   G.lastQuizSubject = subject;
-  G.lastGardenUnlocked = gardenJustUnlocked;
   G.screen = 'quizResult';
   render();
 }
@@ -875,7 +869,6 @@ function render() {
           : 'まだ、お互いに見えていない部分が多いらしい。'}</p>
         ${G.lastQuizResult ? `<p class="fb-meaning">${s.word} — ${s.meaning}</p>` : ''}
         ${G.lastGotPart ? '<p class="fb-gotpart">足元に、小さな部品が落ちていた。</p>' : ''}
-        ${G.lastGardenUnlocked ? `<p class="fb-gardenline">${s.gardenLine}</p>` : ''}
         <button onclick="continueAfterFinish()">拠点へ戻る</button>
       </div>`;
     return;
