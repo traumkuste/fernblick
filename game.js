@@ -535,6 +535,22 @@ function answerMeaningQuiz(idx) {
 
 // 拠点(タイトル画面)に戻る。その直前に、まだ伝えていない用件を持つ観測員がいれば、
 // ここで自動的に話しかけてくる(Wortzimmerを自分から訪れる、という発見任せにしない)。
+// まだ伝えていない用件を持つ観測員がいれば、自動的に話しかけてくる画面に切り替える。
+// 該当者がいれば true を返し、画面遷移も行う。呼び出し側はその場合render()だけすればよい。
+function checkAutoTalk(returnTo) {
+  const messenger = G.knownWords.find(k => k.unlocksGarden && !G.gardenUnlocked);
+  if (messenger) {
+    G.gardenUnlocked = true;
+    persistSave();
+    G.talkReturnTo = returnTo;
+    G.lastTalkSubject = messenger;
+    G.lastTalkLine = messenger.gardenLine;
+    G.screen = 'wortzimmerTalk';
+    return true;
+  }
+  return false;
+}
+
 function returnToTitleOrAutoTalk() {
   // 後遺症が残っている間は、回復量も少なくなる。判定はafterEffectをリセットする前に行う。
   const penalty = G.afterEffect ? G.data.seesaw.afterEffectRecoveryPenalty : 1;
@@ -542,16 +558,7 @@ function returnToTitleOrAutoTalk() {
   G.afterEffect = false; // 1回拠点に戻れば、後遺症はここで解消する(簡易処理)
   persistSave();
 
-  const messenger = G.knownWords.find(k => k.unlocksGarden && !G.gardenUnlocked);
-  if (messenger) {
-    G.gardenUnlocked = true;
-    persistSave();
-    G.talkReturnTo = 'title'; // 自動会話の場合、戻り先は拠点
-    G.lastTalkSubject = messenger;
-    G.lastTalkLine = messenger.gardenLine;
-    G.screen = 'wortzimmerTalk';
-    return;
-  }
+  if (checkAutoTalk('title')) return;
   G.screen = 'title';
 }
 
@@ -746,7 +753,7 @@ function render() {
         <p class="fb-opening-text">表紙を開くと、文字よりも先に、何かの気配が立ちのぼってくる。</p>
         <button onclick="encounterRandomSubject()">気配の方へ、目を向ける</button>
         <button onclick="encounterImportantSubject()">遠くで、何かが光っている方へ</button>
-        <button class="fb-reset" onclick="G.screen='title'; render();">本を閉じる</button>
+        <button class="fb-reset" onclick="returnToTitleOrAutoTalk(); render();">本を閉じる</button>
       </div>`;
     return;
   }
@@ -772,7 +779,7 @@ function render() {
             </button>
           `).join('')}
         </div>
-        <button class="fb-reset" onclick="G.screen='title'; render();">部屋を出る</button>
+        <button class="fb-reset" onclick="returnToTitleOrAutoTalk(); render();">部屋を出る</button>
       </div>`;
     return;
   }
@@ -780,7 +787,7 @@ function render() {
   if (G.screen === 'wortzimmerTalk') {
     const w = G.lastTalkSubject;
     const returnLabel = G.talkReturnTo === 'wortzimmer' ? '部屋に戻る' : '拠点へ戻る';
-    const returnAction = G.talkReturnTo === 'wortzimmer' ? 'openWortzimmer()' : "G.screen='title'; render();";
+    const returnAction = G.talkReturnTo === 'wortzimmer' ? 'openWortzimmer()' : "returnToTitleOrAutoTalk(); render();";
     app.innerHTML = `
       <div class="fb-wortzimmer-talk">
         <p class="fb-talk-name">${w.word}</p>
@@ -813,7 +820,7 @@ function render() {
 
         <p class="fb-playerroom-detail">記憶している言葉: ${G.knownWords.length}語</p>
 
-        <button class="fb-reset" onclick="G.screen='title'; render();">拠点へ戻る</button>
+        <button class="fb-reset" onclick="if(!checkAutoTalk('title')){G.screen='title';} render();">拠点へ戻る</button>
       </div>`;
     return;
   }
