@@ -99,22 +99,24 @@ function loadSave() {
     G.parts = saved.parts != null ? saved.parts : 0;
     G.gardenUnlocked = saved.gardenUnlocked || false;
 
-    // 古いセーブデータには、後から追加したフィールド(stats、unlocksGarden、gardenLineなど)が
-    // 欠けていることがある。data.json側のマスターデータと突き合わせて補う。
+    // 古いセーブデータには後から追加したフィールドが欠けていることがある。
+    // G.data参照に頼らず、直接必要なフィールドを補完する。
     let migrated = false;
     G.knownWords.forEach(w => {
-      const master = G.data.subjects.find(s => s.word === w.word);
       if (!w.stats) {
         w.stats = generateInitialStats();
         migrated = true;
       }
-      if (master) {
-        ['unlocksGarden', 'gardenLine'].forEach(key => {
-          if (w[key] === undefined && master[key] !== undefined) {
-            w[key] = master[key];
-            migrated = true;
-          }
-        });
+      // Raunenは庭解放の依頼者。このフィールドが欠落していると自動会話が発生しない。
+      if (w.word === 'Raunen') {
+        if (w.unlocksGarden === undefined) {
+          w.unlocksGarden = true;
+          migrated = true;
+        }
+        if (w.gardenLine === undefined) {
+          w.gardenLine = '庭が、ある。荒れてしまったけれど、まだそこにある。直しに行かないか。';
+          migrated = true;
+        }
       }
     });
     if (migrated) persistSave();
