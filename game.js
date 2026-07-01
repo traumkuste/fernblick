@@ -743,6 +743,7 @@ function render() {
         ${G.afterEffect ? '<p class="fb-aftereffect">まだ光の名残がある。明晰さの回復が少し遅い。</p>' : ''}
         <button class="fb-reset" onclick="resetSave()">記憶をすべて消す（検証用）</button>
         <button class="fb-reset" onclick="forceResetGardenFlag()">庭フラグだけリセット（検証用）</button>
+        <button class="fb-reset" onclick="showDebugState()">今の状態を見る（検証用）</button>
       </div>`;
     return;
   }
@@ -1026,6 +1027,24 @@ function forceResetGardenFlag() {
   persistSave();
   alert('庭の依頼フラグをリセットした。Raunenに話しかけるか、観測から拠点に戻ると、また依頼が伝えられるはず。');
   render();
+}
+
+// 推測ではなく実際の状態を確認するための、検証用デバッグ表示
+function showDebugState() {
+  const wordsInfo = G.knownWords.map(w =>
+    `${w.word}: unlocksGarden=${w.unlocksGarden}, gardenLine=${w.gardenLine ? 'あり' : 'なし'}`
+  ).join('\n') || '(まだ誰もいない)';
+
+  const messenger = G.knownWords.find(k => k.unlocksGarden && !G.gardenUnlocked);
+
+  const message =
+    `gardenUnlocked: ${G.gardenUnlocked}\n` +
+    `現在の画面: ${G.screen}\n` +
+    `---観測員一覧---\n${wordsInfo}\n` +
+    `---判定結果---\n` +
+    `次に拠点へ戻った時に自動会話が起きるか: ${messenger ? 'はい(' + messenger.word + ')' : 'いいえ'}`;
+
+  alert(message);
 }
 
 window.addEventListener('DOMContentLoaded', init);
