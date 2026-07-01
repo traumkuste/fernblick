@@ -1023,41 +1023,23 @@ function resetSave() {
 // 過去のバージョンの実行により、gardenUnlockedだけが意図せずtrueのまま
 // 残ってしまっているケースのための、ピンポイントな検証用リセット。
 function forceResetGardenFlag() {
-  // フラグをリセットするだけでなく、knownWords内の観測員に
-  // 欠落しているフィールドをその場で直接補完する
-  G.knownWords.forEach(w => {
-    const master = G.data.subjects.find(s => s.word === w.word);
-    if (master) {
-      if (w.unlocksGarden === undefined && master.unlocksGarden !== undefined) {
-        w.unlocksGarden = master.unlocksGarden;
-      }
-      if (w.gardenLine === undefined && master.gardenLine !== undefined) {
-        w.gardenLine = master.gardenLine;
-      }
-    }
-  });
+  // 条件判定に頼らず、Raunenを直接探して強制的にフィールドを設定する
+  const raunen = G.knownWords.find(w => w.word === 'Raunen');
+  if (raunen) {
+    raunen.unlocksGarden = true;
+    raunen.gardenLine = '庭が、ある。荒れてしまったけれど、まだそこにある。直しに行かないか。';
+  }
   G.gardenUnlocked = false;
   persistSave();
-  alert('庭の依頼フラグをリセットした。Raunenに話しかけるか、観測から拠点に戻ると、また依頼が伝えられるはず。');
+  const msg = raunen
+    ? 'Raunenのデータを修復し、庭の依頼フラグをリセットした。何か観測して拠点に戻ると、Raunenが話しかけてくるはず。'
+    : 'Raunenがまだ仲間にいない。先にRaunenを観測・仲間にしてから、また押してください。';
+  alert(msg);
   render();
 }
 
-// 推測ではなく実際の状態を確認するための、検証用デバッグ表示
 function showDebugState() {
-  // 表示と同時に、欠落フィールドをその場で補完する
-  G.knownWords.forEach(w => {
-    const master = G.data.subjects.find(s => s.word === w.word);
-    if (master) {
-      if (w.unlocksGarden === undefined && master.unlocksGarden !== undefined) {
-        w.unlocksGarden = master.unlocksGarden;
-      }
-      if (w.gardenLine === undefined && master.gardenLine !== undefined) {
-        w.gardenLine = master.gardenLine;
-      }
-    }
-  });
-  persistSave();
-
+  const raunen = G.knownWords.find(w => w.word === 'Raunen');
   const wordsInfo = G.knownWords.map(w =>
     `${w.word}: unlocksGarden=${w.unlocksGarden}, gardenLine=${w.gardenLine ? 'あり' : 'なし'}`
   ).join('\n') || '(まだ誰もいない)';
@@ -1066,7 +1048,7 @@ function showDebugState() {
 
   const message =
     `gardenUnlocked: ${G.gardenUnlocked}\n` +
-    `現在の画面: ${G.screen}\n` +
+    `Raunen直参照: unlocksGarden=${raunen ? raunen.unlocksGarden : 'Raunenがいない'}\n` +
     `---観測員一覧---\n${wordsInfo}\n` +
     `---判定結果---\n` +
     `次に拠点へ戻った時に自動会話が起きるか: ${messenger ? 'はい(' + messenger.word + ')' : 'いいえ'}`;
